@@ -26,7 +26,7 @@ OBS_ELEV = 119
 # Ares — AIS constants
 # ---------------------------------------------------------------------------
 
-AISSTREAM_KEY = "PASTE_YOUR_KEY_HERE"
+AISSTREAM_KEY = "5c533a95345123d3262c69abce911ef76c13e3ed"
 ARES_BOUNDS   = [[[23.0, 55.0], [27.5, 61.0]]]  # Strait of Hormuz bounding box
 
 _SHIP_TYPE_RANGES = [
@@ -85,7 +85,7 @@ def ship_type_label(type_code):
 
 def is_military(type_code):
     """Return True if the AIS type code indicates a military vessel."""
-    return type_code == 35
+    return ship_type_label(type_code) == "Military"
 
 
 def mmsi_to_country(mmsi_str):

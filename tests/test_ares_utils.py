@@ -1,7 +1,6 @@
 import sys, os, time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import the functions we're about to write
 from app import ship_type_label, is_military, mmsi_to_country, prune_stale_ships
 
 
