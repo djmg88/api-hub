@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify
-import requests, threading, time, datetime
+import requests, threading, time, datetime, json
+import websocket
 
 app = Flask(__name__)
 
@@ -102,6 +103,8 @@ def prune_stale_ships(ships_dict, max_age=1800):
         del ships_dict[mmsi]
 
 cache = {}
+ares_ships = {}        # keyed by MMSI string, stores latest state per vessel
+ares_lock  = threading.Lock()
 opensky_token = {"value": None, "expires": 0}
 
 # ---------------------------------------------------------------------------
@@ -317,7 +320,90 @@ def refresh_horizons():
             cache['horizons'] = {'data': results, 'ts': time.time(), 'error': None}
         time.sleep(86400)  # refresh daily
 
+# ---------------------------------------------------------------------------
+# Ares — aisstream.io WebSocket thread
+# ---------------------------------------------------------------------------
+
+def _ares_handle_message(ws, raw):
+    try:
+        data     = json.loads(raw)
+        msg_type = data.get("MessageType", "")
+        meta     = data.get("MetaData", {})
+        mmsi     = str(meta.get("MMSI", "")).strip()
+        if not mmsi:
+            return
+
+        with ares_lock:
+            if mmsi not in ares_ships:
+                ares_ships[mmsi] = {"mmsi": mmsi, "last_seen": time.time()}
+
+            if msg_type == "PositionReport":
+                pr      = data.get("Message", {}).get("PositionReport", {})
+                heading = pr.get("TrueHeading")
+                if heading is None or heading == 511:   # 511 = not available in AIS spec
+                    heading = pr.get("Cog")
+                speed = pr.get("SpeedOverGround")
+                if speed == 102.3:                       # 102.3 = not available in AIS spec
+                    speed = None
+                ares_ships[mmsi].update({
+                    "lat":       pr.get("Latitude"),
+                    "lon":       pr.get("Longitude"),
+                    "speed":     round(speed, 1) if speed is not None else None,
+                    "heading":   int(heading) if heading is not None else None,
+                    "last_seen": time.time(),
+                })
+                if "country" not in ares_ships[mmsi]:
+                    ares_ships[mmsi]["country"] = mmsi_to_country(mmsi)
+
+            elif msg_type == "ShipStaticData":
+                sd        = data.get("Message", {}).get("ShipStaticData", {})
+                type_code = sd.get("Type", 0)
+                name      = (sd.get("Name") or meta.get("ShipName") or "").strip() or mmsi
+                ares_ships[mmsi].update({
+                    "name":      name,
+                    "type":      ship_type_label(type_code),
+                    "military":  is_military(type_code),
+                    "country":   mmsi_to_country(mmsi),
+                    "last_seen": time.time(),
+                })
+
+    except Exception as e:
+        print(f"[Ares] Message error: {e}")
+
+
+def _ares_on_open(ws):
+    sub = json.dumps({
+        "APIKey":             AISSTREAM_KEY,
+        "BoundingBoxes":      ARES_BOUNDS,
+        "FilterMessageTypes": ["PositionReport", "ShipStaticData"],
+    })
+    ws.send(sub)
+    print("[Ares] Connected to aisstream.io")
+
+
+def _run_ares():
+    while True:
+        try:
+            ws = websocket.WebSocketApp(
+                "wss://stream.aisstream.io/v0/stream",
+                on_message = _ares_handle_message,
+                on_open    = _ares_on_open,
+                on_error   = lambda ws, e: print(f"[Ares] WS error: {e}"),
+                on_close   = lambda ws, c, m: print(f"[Ares] WS closed: {c}"),
+            )
+            ws.run_forever(ping_interval=30, ping_timeout=10)
+        except Exception as e:
+            print(f"[Ares] Connection error: {e}")
+        print("[Ares] Reconnecting in 5s...")
+        time.sleep(5)
+        with ares_lock:
+            prune_stale_ships(ares_ships)
+
+
 def init_cache():
+    # Ares
+    threading.Thread(target=_run_ares, daemon=True).start()
+
     # Sky Watch
     threading.Thread(target=refresh_flights, daemon=True).start()
     start("iss_pos",    "http://api.open-notify.org/iss-now.json", 30)
