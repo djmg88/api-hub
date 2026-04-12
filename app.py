@@ -22,6 +22,85 @@ OBS_LAT  = -37.7939
 OBS_LON  = 145.3214
 OBS_ELEV = 119
 
+# ---------------------------------------------------------------------------
+# Ares — AIS constants
+# ---------------------------------------------------------------------------
+
+AISSTREAM_KEY = "PASTE_YOUR_KEY_HERE"
+ARES_BOUNDS   = [[[23.0, 55.0], [27.5, 61.0]]]  # Strait of Hormuz bounding box
+
+_SHIP_TYPE_RANGES = [
+    (range(20, 30), "Wing in Ground"),
+    (range(30, 31), "Fishing"),
+    (range(31, 33), "Towing"),
+    (range(35, 36), "Military"),
+    (range(36, 37), "Sailing"),
+    (range(37, 38), "Pleasure Craft"),
+    (range(40, 50), "High Speed Craft"),
+    (range(50, 51), "Pilot Vessel"),
+    (range(51, 52), "SAR"),
+    (range(52, 53), "Tug"),
+    (range(60, 70), "Passenger"),
+    (range(70, 80), "Cargo"),
+    (range(80, 90), "Tanker"),
+    (range(90, 100), "Other"),
+]
+
+_MID_COUNTRY = {
+    "310": "Bermuda", "311": "Bahamas", "316": "Canada",
+    "319": "Cayman Islands", "338": "USA", "339": "USA",
+    "366": "USA", "367": "USA", "368": "USA", "369": "USA",
+    "303": "USA", "351": "Panama", "352": "Panama", "353": "Panama",
+    "354": "Panama", "355": "Panama", "356": "Panama", "357": "Panama",
+    "370": "Panama", "371": "Panama", "372": "Panama", "373": "Panama",
+    "232": "UK", "233": "UK", "234": "UK", "235": "UK",
+    "209": "Cyprus", "210": "Cyprus", "212": "Cyprus",
+    "229": "Malta", "248": "Malta", "249": "Malta",
+    "403": "Saudi Arabia", "408": "Iraq",
+    "413": "China", "414": "China",
+    "416": "Taiwan",
+    "422": "Iran", "447": "Iran",
+    "440": "South Korea", "441": "South Korea",
+    "451": "Qatar", "455": "Bahrain",
+    "456": "Kuwait", "457": "Kuwait",
+    "461": "UAE", "462": "UAE", "463": "UAE",
+    "470": "UAE", "471": "UAE", "472": "UAE",
+    "477": "Hong Kong",
+    "503": "Australia",
+    "525": "Indonesia",
+    "538": "Marshall Islands",
+    "564": "Singapore", "565": "Singapore",
+    "620": "Comoros",
+    "636": "Liberia", "637": "Liberia",
+}
+
+
+def ship_type_label(type_code):
+    """Return human-readable ship type label for an AIS type code."""
+    for r, label in _SHIP_TYPE_RANGES:
+        if type_code in r:
+            return label
+    return "Unknown"
+
+
+def is_military(type_code):
+    """Return True if the AIS type code indicates a military vessel."""
+    return type_code == 35
+
+
+def mmsi_to_country(mmsi_str):
+    """Return country name for an MMSI string based on its 3-digit MID prefix."""
+    mid = str(mmsi_str)[:3]
+    return _MID_COUNTRY.get(mid, "Unknown")
+
+
+def prune_stale_ships(ships_dict, max_age=1800):
+    """Remove ships not seen in max_age seconds. Mutates ships_dict in place."""
+    cutoff = time.time() - max_age
+    stale = [mmsi for mmsi, s in ships_dict.items() if s.get("last_seen", 0) < cutoff]
+    for mmsi in stale:
+        del ships_dict[mmsi]
+
 cache = {}
 opensky_token = {"value": None, "expires": 0}
 
