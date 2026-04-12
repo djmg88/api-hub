@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Earth — API Hub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg: #070b12;
+            --glass: rgba(255,255,255,0.04);
+            --glass-border: rgba(255,255,255,0.09);
+            --accent: #00d4ff;
+            --accent2: #00ff9d;
+            --accent3: #ff6b35;
+            --accent4: #c77dff;
+            --warn: #ffb703;
+            --danger: #ef233c;
+            --text: rgba(255,255,255,0.92);
+            --text-muted: rgba(255,255,255,0.55);
+            --text-dim: rgba(255,255,255,0.28);
+            --mono: 'SF Mono','Fira Code',monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px 12px;
+        }
+
+        .topbar a {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            text-decoration: none;
+        }
+
+        .topbar a:hover { color: var(--text-muted); }
+
+        .topbar .title {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .section {
+            padding: 24px 20px 0;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .section-meta {
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50% { opacity:0.4; transform:scale(1.3); }
+        }
+
+        /* --- Stat cards --- */
+        .stat-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-pill {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            cursor: default;
+        }
+
+        .stat-pill .sp-label {
+            font-family: var(--mono);
+            font-size: 0.45rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+        }
+
+        .stat-pill .sp-value {
+            font-family: var(--mono);
+            font-size: 1.2rem;
+            font-weight: 600;
+            line-height: 1;
+        }
+
+        .stat-pill .sp-unit {
+            font-family: var(--mono);
+            font-size: 0.45rem;
+            color: var(--text-dim);
+            margin-top: 3px;
+        }
+
+        /* --- Correlation chart --- */
+        .chart-wrap {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 28px;
+        }
+
+        .chart-toggles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .chart-toggle {
+            font-family: var(--mono);
+            font-size: 0.48rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .chart-toggle .ct-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .chart-toggle.active { background: rgba(255,255,255,0.06); }
+        .chart-toggle.inactive { opacity: 0.35; }
+
+        .chart-canvas-wrap {
+            position: relative;
+            height: 280px;
+        }
+
+        /* --- Air Quality --- */
+        .aqi-hero {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 20px;
+            align-items: center;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .aqi-hero { grid-template-columns: 1fr; }
+        }
+
+        .aqi-big { text-align: center; }
+
+        .aqi-number {
+            font-family: var(--mono);
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .aqi-label {
+            font-family: var(--mono);
+            font-size: 0.48rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .aqi-status {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+
+        .aqi-params {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 10px;
+        }
+
+        .aqi-param {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+
+        .aqi-param .ap-name {
+            font-family: var(--mono);
+            font-size: 0.45rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+        }
+
+        .aqi-param .ap-val {
+            font-family: var(--mono);
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .aqi-param .ap-unit {
+            font-family: var(--mono);
+            font-size: 0.42rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        .aqi-param .ap-health {
+            font-family: var(--mono);
+            font-size: 0.42rem;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .aqi-source {
+            font-family: var(--mono);
+            font-size: 0.45rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 28px;
+            text-align: right;
+        }
+
+        /* --- Stargazing --- */
+        .stargaze-legend {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .sg-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: 0.48rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .sg-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+        .stargaze-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 700px) { .stargaze-grid { grid-template-columns: repeat(4,1fr); } }
+        @media (max-width: 400px) { .stargaze-grid { grid-template-columns: repeat(3,1fr); } }
+
+        .stargaze-night {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 12px 8px;
+            text-align: center;
+        }
+
+        .stargaze-night.clear  { border-color: rgba(0,255,157,0.4); background: rgba(0,255,157,0.05); }
+        .stargaze-night.partial { border-color: rgba(255,183,3,0.3); background: rgba(255,183,3,0.04); }
+
+        .sn-day {
+            font-family: var(--mono);
+            font-size: 0.45rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .sn-cloud { font-family: var(--mono); font-size: 1.1rem; font-weight: 700; margin-bottom: 2px; }
+        .sn-label { font-family: var(--mono); font-size: 0.42rem; letter-spacing: 1px; text-transform: uppercase; }
+        .sn-window { font-family: var(--mono); font-size: 0.4rem; color: var(--text-dim); margin-top: 4px; }
+
+        /* --- Weather map --- */
+        .map-toggles {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .map-toggle {
+            font-family: var(--mono);
+            font-size: 0.48rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .map-toggle.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.08); }
+
+        .map-wrap {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            margin-bottom: 28px;
+        }
+
+        #weather-map { height: 560px; }
+        #quake-map   { height: 380px; }
+
+        .leaflet-container { background: #e8f4f8 !important; }
+
+        .map-legend {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            min-height: 22px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: 0.45rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+        .legend-swatch {
+            width: 24px; height: 8px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        .leaflet-popup-content-wrapper {
+            background: #0d1520;
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.6rem;
+        }
+        .leaflet-popup-tip { background: #0d1520; }
+        .leaflet-popup-content { margin: 10px 14px; line-height: 1.9; }
+        .leaflet-bar a { background: #0d1520 !important; color: var(--text-muted) !important; border-color: var(--glass-border) !important; }
+
+        /* --- Hourly forecast --- */
+        .hourly-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 28px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--glass-border) transparent;
+        }
+
+        .hourly-item {
+            flex-shrink: 0;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            text-align: center;
+            min-width: 68px;
+        }
+
+        .hi-time  { font-family: var(--mono); font-size: 0.45rem; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 6px; }
+        .hi-temp  { font-family: var(--mono); font-size: 0.85rem; font-weight: 600; color: var(--accent3); margin-bottom: 4px; }
+        .hi-rain  { font-family: var(--mono); font-size: 0.48rem; }
+        .hi-cloud { font-family: var(--mono); font-size: 0.45rem; color: var(--text-dim); margin-top: 2px; }
+
+        /* --- Quake log --- */
+        .quake-log {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 40px;
+        }
+
+        .quake-log-header {
+            display: grid;
+            grid-template-columns: 70px 1fr 140px 70px;
+            gap: 10px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--glass-border);
+            font-family: var(--mono);
+            font-size: 0.42rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .quake-row {
+            display: grid;
+            grid-template-columns: 70px 1fr 140px 70px;
+            gap: 10px;
+            padding: 9px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            align-items: center;
+        }
+
+        .quake-row:last-child { border-bottom: none; }
+        .quake-row:hover { background: rgba(255,255,255,0.02); }
+        .quake-mag   { font-weight: 700; font-size: 0.75rem; }
+        .quake-place { color: var(--text-muted); }
+        .quake-time  { color: var(--text-dim); }
+        .quake-depth { color: var(--text-dim); }
+
+        .stat-bar-quake {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px,1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .no-data {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            padding: 24px;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+        }
+
+        @media (max-width: 600px) {
+            .section { padding: 16px 12px 0; }
+            #weather-map { height: 280px; }
+            .quake-log-header, .quake-row { grid-template-columns: 60px 1fr 100px; }
+            .quake-depth { display: none; }
+            .stat-bar { grid-template-columns: repeat(2,1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <a href="/">← API Hub</a>
+    <div class="title">Earth</div>
+    <a href="http://192.168.1.108:5000">Home</a>
+</div>
+
+<!-- ============================================================ WEATHER STATS -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse"></span>Weather — Mooroolbark</div>
+        <div class="section-meta" id="weather-meta">Loading...</div>
+    </div>
+
+    <div class="stat-bar">
+        <div class="stat-pill">
+            <div class="sp-label">Temperature</div>
+            <div class="sp-value" id="w-temp" style="color:#ff6b35">--</div>
+            <div class="sp-unit">°C</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Humidity</div>
+            <div class="sp-value" id="w-hum" style="color:#00d4ff">--</div>
+            <div class="sp-unit">%</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Wind</div>
+            <div class="sp-value" id="w-wind" style="color:#00ff9d">--</div>
+            <div class="sp-unit" id="w-wind-dir">km/h</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Gusts</div>
+            <div class="sp-value" id="w-gusts" style="color:#00ff9d">--</div>
+            <div class="sp-unit">km/h</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">UV Index</div>
+            <div class="sp-value" id="w-uv" style="color:#ffb703">--</div>
+            <div class="sp-unit" id="w-uv-label">--</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Pressure</div>
+            <div class="sp-value" id="w-pres" style="color:#c77dff">--</div>
+            <div class="sp-unit">hPa</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Visibility</div>
+            <div class="sp-value" id="w-vis" style="color:rgba(255,255,255,0.55)">--</div>
+            <div class="sp-unit">km</div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ CORRELATION CHART -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title">7-Day Weather Correlation</div>
+        <div class="section-meta">Normalised 0–100% · Toggle metrics</div>
+    </div>
+
+    <div class="chart-wrap">
+        <div class="chart-toggles" id="chart-toggles"></div>
+        <div class="chart-canvas-wrap">
+            <canvas id="corrChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ AIR QUALITY -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--accent2)"></span>Air Quality — Mooroolbark</div>
+        <div class="section-meta" id="aqi-meta">EPA Victoria · Live</div>
+    </div>
+
+    <div class="aqi-hero">
+        <div class="aqi-big">
+            <div class="aqi-number" id="aqi-number">--</div>
+            <div class="aqi-label">Air Pollution Index</div>
+            <div class="aqi-status" id="aqi-status">--</div>
+        </div>
+        <div class="aqi-params" id="aqi-params">
+            <div class="no-data">Loading...</div>
+        </div>
+    </div>
+    <div class="aqi-source">Source: EPA Victoria · Mooroolbark Standard Monitoring Station</div>
+</div>
+
+<!-- ============================================================ STARGAZING -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--accent4)"></span>Stargazing Forecast</div>
+        <div class="section-meta">Next 7 nights · Mooroolbark</div>
+    </div>
+
+    <div class="stargaze-legend">
+        <div class="sg-legend-item"><div class="sg-dot" style="background:var(--accent2)"></div>Clear (&lt;20%)</div>
+        <div class="sg-legend-item"><div class="sg-dot" style="background:var(--warn)"></div>Partial (20–60%)</div>
+        <div class="sg-legend-item"><div class="sg-dot" style="background:rgba(255,255,255,0.2)"></div>Cloudy (&gt;60%)</div>
+    </div>
+
+    <div class="stargaze-grid" id="stargaze-grid">
+        <div class="no-data">Loading...</div>
+    </div>
+</div>
+
+<!-- ============================================================ WEATHER MAP -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title">Weather Map</div>
+        <div class="section-meta">OpenWeatherMap overlays</div>
+    </div>
+
+    <div class="map-toggles">
+        <button class="map-toggle active" onclick="setLayer('wind',this)">Wind</button>
+        <button class="map-toggle" onclick="setLayer('clouds',this)">Clouds</button>
+        <button class="map-toggle" onclick="setLayer('precipitation',this)">Rain</button>
+        <button class="map-toggle" onclick="setLayer('pressure',this)">Pressure</button>
+        <button class="map-toggle" onclick="setLayer('temp',this)">Temperature</button>
+        <button class="map-toggle" onclick="setLayer('none',this)">Base Only</button>
+    </div>
+
+    <div class="map-legend" id="map-legend"></div>
+
+    <div class="map-wrap">
+        <div id="weather-map"></div>
+    </div>
+</div>
+
+<!-- ============================================================ 24HR FORECAST -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title">24hr Forecast</div>
+        <div class="section-meta">Hourly · Mooroolbark</div>
+    </div>
+    <div class="hourly-scroll" id="hourly-scroll"></div>
+</div>
+
+<!-- ============================================================ EARTHQUAKES -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--accent3)"></span>Victorian Earthquakes</div>
+        <div class="section-meta" id="quake-meta">Last 24 hours</div>
+    </div>
+
+    <div class="stat-bar-quake">
+        <div class="stat-pill">
+            <div class="sp-label">Last 24hrs</div>
+            <div class="sp-value" id="q-day-count" style="color:var(--accent3)">--</div>
+            <div class="sp-unit">events</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Largest (24hr)</div>
+            <div class="sp-value" id="q-day-max" style="color:var(--danger)">--</div>
+            <div class="sp-unit">magnitude</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Last 30 days</div>
+            <div class="sp-value" id="q-month-count" style="color:var(--accent3)">--</div>
+            <div class="sp-unit">events</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Largest (30d)</div>
+            <div class="sp-value" id="q-month-max" style="color:var(--danger)">--</div>
+            <div class="sp-unit">magnitude</div>
+        </div>
+    </div>
+
+    <div class="map-wrap">
+        <div id="quake-map"></div>
+    </div>
+
+    <div class="section-header" style="margin-top:14px">
+        <div class="section-title">30-Day Event Log</div>
+        <div class="section-meta" id="quake-log-meta">M0.5+</div>
+    </div>
+
+    <div class="quake-log">
+        <div class="quake-log-header">
+            <span>Magnitude</span>
+            <span>Location</span>
+            <span>Time (AEDT)</span>
+            <span>Depth</span>
+        </div>
+        <div id="quake-log-body"><div class="no-data">Loading...</div></div>
+    </div>
+</div>
+
+<div class="footer">192.168.1.108 · Earth · Open-Meteo · EPA Victoria · Geoscience Australia</div>
+
+<script>
+// ============================================================
+// CHART METRIC CONFIG
+// Keys match Open-Meteo hourly field names
+// Colors match the stat card colours above
+// ============================================================
+const METRICS = [
+    { key: 'temperature_2m',           label: 'Temperature',  color: '#ff6b35', unit: '°C'  },
+    { key: 'relative_humidity_2m',     label: 'Humidity',     color: '#00d4ff', unit: '%'   },
+    { key: 'wind_speed_10m',           label: 'Wind',         color: '#00ff9d', unit: 'km/h'},
+    { key: 'uv_index',                 label: 'UV Index',     color: '#ffb703', unit: ''    },
+    { key: 'surface_pressure',         label: 'Pressure',     color: '#c77dff', unit: 'hPa' },
+    { key: 'visibility',               label: 'Visibility',   color: 'rgba(255,255,255,0.55)', unit: 'km' },
+];
+
+let corrChart = null;
+let activeMetrics = new Set(METRICS.map(m => m.key));
+let weatherDataGlobal = null;
+
+// ============================================================
+// WEATHER MAP
+// ============================================================
+let owmKey = '';
+let owmLayer = null;
+
+const weatherMap = L.map('weather-map', {
+    center: [-37.7939, 145.3214],
+    zoom: 8,
+    zoomControl: true,
+    attributionControl: false
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom: 13
+}).addTo(weatherMap);
+
+L.circleMarker([-37.7939, 145.3214], {
+    radius: 6, color: '#00ff9d', fillColor: '#00ff9d',
+    fillOpacity: 0.9, weight: 2
+}).addTo(weatherMap).bindPopup('<b>Mooroolbark</b>');
+
+const LAYER_LEGENDS = {
+    wind:          [['#ffffff','Calm'],['#a0e4ff','Light'],['#00d4ff','Moderate'],['#0080ff','Strong'],['#ff6b35','Gale']],
+    clouds:        [['#ffffff','Clear'],['#d0e8f0','Few'],['#a0c4d8','Scattered'],['#6899b0','Broken'],['#3a6070','Overcast']],
+    precipitation: [['#ffffff','Dry'],['#a0d4ff','Light'],['#4499ff','Moderate'],['#0044cc','Heavy'],['#6600cc','Intense']],
+    pressure:      [['#ff4444','Low'],['#ff9900','Below avg'],['#ffff00','Average'],['#99ff00','Above avg'],['#00cc44','High']],
+    temp:          [['#4400cc','Freezing'],['#0088ff','Cold'],['#00ffcc','Cool'],['#ffcc00','Warm'],['#ff3300','Hot']],
+    none:          []
+};
+
+function setLayer(type, btn) {
+    document.querySelectorAll('.map-toggle').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (owmLayer) { weatherMap.removeLayer(owmLayer); owmLayer = null; }
+    const legend = document.getElementById('map-legend');
+    const items = LAYER_LEGENDS[type] || [];
+    legend.innerHTML = items.map(([color, label]) =>
+        `<div class="legend-item"><div class="legend-swatch" style="background:${color}"></div>${label}</div>`
+    ).join('');
+    if (type === 'none' || !owmKey) return;
+    const layerMap = { wind: 'wind_new', clouds: 'clouds_new', precipitation: 'precipitation_new', pressure: 'pressure_new', temp: 'temp_new' };
+    owmLayer = L.tileLayer(
+        `https://tile.openweathermap.org/map/${layerMap[type]}/{z}/{x}/{y}.png?appid=${owmKey}`,
+        { maxZoom: 13, opacity: 0.5 }
+    ).addTo(weatherMap);
+}
+
+fetch('/api/owm_key').then(r => r.json()).then(d => {
+    owmKey = d.key;
+    owmLayer = L.tileLayer(
+        `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${owmKey}`,
+        { maxZoom: 13, opacity: 0.5 }
+    ).addTo(weatherMap);
+    const legend = document.getElementById('map-legend');
+    legend.innerHTML = LAYER_LEGENDS.wind.map(([color, label]) =>
+        `<div class="legend-item"><div class="legend-swatch" style="background:${color}"></div>${label}</div>`
+    ).join('');
+});
+
+// ============================================================
+// HELPERS
+// ============================================================
+function windDir(deg) {
+    const d = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    return d[Math.round(deg / 22.5) % 16];
+}
+
+function uvLabel(uv) {
+    if (uv <= 2) return 'Low';
+    if (uv <= 5) return 'Moderate';
+    if (uv <= 7) return 'High';
+    if (uv <= 10) return 'Very High';
+    return 'Extreme';
+}
+
+function wCode(code) {
+    if (code === 0) return 'Clear';
+    if (code <= 3) return 'Partly Cloudy';
+    if (code <= 49) return 'Foggy';
+    if (code <= 59) return 'Drizzle';
+    if (code <= 69) return 'Rain';
+    if (code <= 79) return 'Snow';
+    if (code <= 82) return 'Showers';
+    if (code <= 99) return 'Thunderstorm';
+    return '--';
+}
+
+function timeAEDT(utcMs) {
+    const d = new Date(utcMs + 11 * 3600 * 1000);
+    return d.toUTCString().replace(' GMT','').split(' ').slice(1,5).join(' ');
+}
+
+function normalise(arr) {
+    const vals = arr.filter(v => v != null && !isNaN(v));
+    const mn = Math.min(...vals);
+    const mx = Math.max(...vals);
+    const range = mx - mn || 1;
+    return arr.map(v => v == null ? null : Math.round(((v - mn) / range) * 100));
+}
+
+// ============================================================
+// BUILD CORRELATION CHART
+// ============================================================
+function buildToggles() {
+    const wrap = document.getElementById('chart-toggles');
+    wrap.innerHTML = '';
+    METRICS.forEach(m => {
+        const btn = document.createElement('button');
+        btn.className = 'chart-toggle active';
+        btn.dataset.key = m.key;
+        btn.innerHTML = `<span class="ct-dot" style="background:${m.color}"></span>${m.label}`;
+        btn.addEventListener('click', () => {
+            if (activeMetrics.has(m.key)) {
+                activeMetrics.delete(m.key);
+                btn.classList.remove('active');
+                btn.classList.add('inactive');
+            } else {
+                activeMetrics.add(m.key);
+                btn.classList.add('active');
+                btn.classList.remove('inactive');
+            }
+            if (weatherDataGlobal) rebuildChart(weatherDataGlobal);
+        });
+        wrap.appendChild(btn);
+    });
+}
+
+function rebuildChart(d) {
+    const hourly = d.hourly;
+    const nowStr = new Date().toISOString().slice(0, 13);
+    const startIdx = hourly.time.findIndex(t => t.slice(0, 13) >= nowStr);
+    const end = Math.min(startIdx + 168, hourly.time.length); // 7 days
+
+    const labels = hourly.time.slice(startIdx, end).map(t => {
+        const dt = new Date(t);
+        return dt.getHours() === 0
+            ? dt.toLocaleDateString('en-AU', {weekday:'short', day:'numeric'})
+            : dt.getHours() + ':00';
+    });
+
+    const datasets = METRICS
+        .filter(m => activeMetrics.has(m.key))
+        .map(m => {
+            const raw = hourly[m.key]
+                ? hourly[m.key].slice(startIdx, end)
+                : hourly['relative_humidity_2m'].slice(startIdx, end).map(() => null);
+
+            // visibility is in metres — convert to km
+            const converted = m.key === 'visibility'
+                ? raw.map(v => v != null ? v / 1000 : null)
+                : raw;
+
+            return {
+                label: m.label,
+                data: normalise(converted),
+                borderColor: m.color,
+                backgroundColor: 'transparent',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.3,
+                yAxisID: 'y'
+            };
+        });
+
+    if (corrChart) corrChart.destroy();
+
+    corrChart = new Chart(document.getElementById('corrChart'), {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(7,11,18,0.95)',
+                    borderColor: 'rgba(255,255,255,0.09)',
+                    borderWidth: 1,
+                    titleColor: 'rgba(255,255,255,0.55)',
+                    bodyColor: 'rgba(255,255,255,0.75)',
+                    titleFont: { family: "'SF Mono','Fira Code',monospace", size: 10 },
+                    bodyFont: { family: "'SF Mono','Fira Code',monospace", size: 10 },
+                    callbacks: {
+                        label: ctx => {
+                            const m = METRICS.find(x => x.label === ctx.dataset.label);
+                            // Get real value for tooltip
+                            const hourly = weatherDataGlobal.hourly;
+                            const nowStr2 = new Date().toISOString().slice(0,13);
+                            const si = hourly.time.findIndex(t => t.slice(0,13) >= nowStr2);
+                            const raw = hourly[m.key] ? hourly[m.key][si + ctx.dataIndex] : null;
+                            const realVal = m.key === 'visibility' && raw != null
+                                ? (raw / 1000).toFixed(0)
+                                : raw != null ? (typeof raw === 'number' ? raw.toFixed(1) : raw) : '--';
+                            return ` ${m.label}: ${realVal}${m.unit}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: 'rgba(255,255,255,0.25)',
+                        font: { size: 9, family: "'SF Mono','Fira Code',monospace" },
+                        maxTicksLimit: 14,
+                        maxRotation: 0
+                    },
+                    grid: { color: 'rgba(255,255,255,0.04)' }
+                },
+                y: {
+                    min: 0, max: 100,
+                    ticks: {
+                        color: 'rgba(255,255,255,0.2)',
+                        font: { size: 9 },
+                        callback: v => v + '%'
+                    },
+                    grid: { color: 'rgba(255,255,255,0.04)' }
+                }
+            }
+        }
+    });
+}
+
+// ============================================================
+// LOAD WEATHER
+// ============================================================
+function updateWeather() {
+    fetch('/api/weather')
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) return;
+            weatherDataGlobal = d;
+            const c = d.current;
+
+            document.getElementById('weather-meta').textContent =
+                wCode(c.weather_code) + ' · ' +
+                new Date().toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'});
+
+            document.getElementById('w-temp').textContent  = Math.round(c.temperature_2m);
+            document.getElementById('w-hum').textContent   = c.relative_humidity_2m;
+            document.getElementById('w-wind').textContent  = Math.round(c.wind_speed_10m);
+            document.getElementById('w-wind-dir').textContent = windDir(c.wind_direction_10m) + ' · km/h';
+            document.getElementById('w-gusts').textContent = Math.round(c.wind_gusts_10m);
+            document.getElementById('w-uv').textContent    = c.uv_index != null ? c.uv_index.toFixed(1) : '--';
+            document.getElementById('w-uv-label').textContent = uvLabel(c.uv_index || 0);
+            document.getElementById('w-pres').textContent  = Math.round(c.surface_pressure);
+            document.getElementById('w-vis').textContent   = c.visibility != null ? (c.visibility / 1000).toFixed(0) : '--';
+
+            // Correlation chart
+            rebuildChart(d);
+
+            // Hourly strip
+            const hourly = d.hourly;
+            const nowStr = new Date().toISOString().slice(0, 13);
+            const startIdx = hourly.time.findIndex(t => t.slice(0, 13) >= nowStr);
+            const strip = document.getElementById('hourly-scroll');
+            strip.innerHTML = '';
+
+            for (let i = startIdx; i < Math.min(startIdx + 24, hourly.time.length); i++) {
+                const t     = new Date(hourly.time[i]);
+                const hour  = t.toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'});
+                const temp  = Math.round(hourly.temperature_2m[i]);
+                const rain  = hourly.precipitation_probability[i] || 0;
+                const cloud = hourly.cloud_cover[i] || 0;
+                const item  = document.createElement('div');
+                item.className = 'hourly-item';
+                item.innerHTML = `
+                    <div class="hi-time">${hour}</div>
+                    <div class="hi-temp">${temp}°</div>
+                    <div class="hi-rain" style="color:${rain > 50 ? 'var(--accent)' : 'var(--text-dim)'}">${rain}% rain</div>
+                    <div class="hi-cloud">${cloud}% cloud</div>`;
+                strip.appendChild(item);
+            }
+
+            // Stargazing
+            buildStargazing(d);
+        })
+        .catch(() => {});
+}
+
+// ============================================================
+// STARGAZING
+// ============================================================
+function buildStargazing(d) {
+    const daily  = d.daily;
+    const hourly = d.hourly;
+    const grid   = document.getElementById('stargaze-grid');
+    const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    grid.innerHTML = '';
+
+    for (let i = 0; i < 7; i++) {
+        const date    = new Date(daily.time[i]);
+        const dayName = DAYS[date.getDay()];
+        const dateStr = daily.time[i];
+
+        const nextDate    = new Date(date);
+        nextDate.setDate(nextDate.getDate() + 1);
+        const nextDateStr = nextDate.toISOString().slice(0, 10);
+
+        const nightIndices = hourly.time
+            .map((t, idx) => ({ t, idx }))
+            .filter(({ t }) => {
+                const h    = new Date(t);
+                const hDate = h.toISOString().slice(0, 10);
+                const hour  = h.getHours();
+                return (hDate === dateStr && hour >= 20) ||
+                       (hDate === nextDateStr && hour <= 4);
+            })
+            .map(({ idx }) => idx);
+
+        const cloudVals = nightIndices.map(idx => hourly.cloud_cover[idx] || 0);
+        const avgCloud  = cloudVals.length
+            ? Math.round(cloudVals.reduce((a, b) => a + b, 0) / cloudVals.length)
+            : 50;
+
+        const clearHours = nightIndices.filter(idx => (hourly.cloud_cover[idx] || 0) < 20);
+        let bestWindow = '';
+        if (clearHours.length > 0) {
+            const first = new Date(hourly.time[clearHours[0]]);
+            const last  = new Date(hourly.time[clearHours[clearHours.length - 1]]);
+            bestWindow  = first.toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'}) +
+                          '–' + last.toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'});
+        }
+
+        let cls = 'stargaze-night', color = 'var(--text-dim)', label = 'Cloudy';
+        if (avgCloud < 20)      { cls += ' clear';   color = 'var(--accent2)'; label = 'Clear'; }
+        else if (avgCloud < 60) { cls += ' partial'; color = 'var(--warn)';    label = 'Partial'; }
+
+        const el = document.createElement('div');
+        el.className = cls;
+        el.innerHTML = `
+            <div class="sn-day">${dayName}</div>
+            <div class="sn-cloud" style="color:${color}">${avgCloud}%</div>
+            <div class="sn-label" style="color:${color}">${label}</div>
+            ${bestWindow ? `<div class="sn-window">${bestWindow}</div>` : ''}`;
+        grid.appendChild(el);
+    }
+}
+
+// ============================================================
+// AIR QUALITY — EPA
+// ============================================================
+function updateAirQuality() {
+    fetch('/api/epa')
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) return;
+
+            const advice = Array.isArray(d.siteHealthAdvices) && d.siteHealthAdvices.length > 0
+                ? d.siteHealthAdvices[0] : null;
+
+            if (advice) {
+                document.getElementById('aqi-status').textContent  = advice.healthAdvice;
+                document.getElementById('aqi-status').style.color  = advice.healthAdviceColor;
+            }
+
+            // API index value
+            const apiParam = Array.isArray(d.parameters)
+                ? d.parameters.find(p => p.name === 'API') : null;
+            if (apiParam) {
+                const r0 = apiParam.timeSeriesReadings?.[0]?.readings?.[0];
+                if (r0) {
+                    document.getElementById('aqi-number').textContent   = r0.averageValue.toFixed(2);
+                    document.getElementById('aqi-number').style.color   = advice?.healthAdviceColor || '#00ff9d';
+                }
+            }
+
+            // Other params
+            const params = Array.isArray(d.parameters)
+                ? d.parameters.filter(p => p.name !== 'API') : [];
+
+            document.getElementById('aqi-params').innerHTML = params.map(p => {
+                const reading = p.timeSeriesReadings?.[0]?.readings?.[0];
+                if (!reading) return '';
+                const unit = (reading.unit || '')
+                    .replace(/&micro;/g, 'μ')
+                    .replace(/&sup3;/g, '³')
+                    .replace(/&deg;/g, '°');
+                return `<div class="aqi-param">
+                    <div class="ap-name">${p.name}</div>
+                    <div class="ap-val">${reading.averageValue}</div>
+                    <div class="ap-unit">${unit}</div>
+                    ${reading.healthAdvice
+                        ? `<div class="ap-health" style="color:${reading.healthAdviceColor}">${reading.healthAdvice}</div>`
+                        : ''}
+                </div>`;
+            }).join('') || '<div class="no-data">No parameter data</div>';
+
+            document.getElementById('aqi-meta').textContent =
+                'EPA Victoria · Mooroolbark · ' +
+                new Date().toLocaleTimeString('en-AU', {hour:'2-digit', minute:'2-digit'});
+        })
+        .catch(() => {});
+}
+
+// ============================================================
+// EARTHQUAKES
+// ============================================================
+const quakeMap = L.map('quake-map', {
+    center: [-36.5, 144.5],
+    zoom: 6,
+    zoomControl: true,
+    attributionControl: false
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 12, opacity: 0.6
+}).addTo(quakeMap);
+
+L.rectangle([[-39.2, 140.9], [-33.9, 150.0]], {
+    color: 'rgba(0,212,255,0.2)', weight: 1, fill: false, dashArray: '4,6'
+}).addTo(quakeMap);
+
+L.circleMarker([-37.7939, 145.3214], {
+    radius: 5, color: '#00ff9d', fillColor: '#00ff9d', fillOpacity: 0.9, weight: 2
+}).addTo(quakeMap).bindPopup('<b>Mooroolbark</b>');
+
+function magColor(mag) {
+    if (mag < 1.0) return '#00d4ff';
+    if (mag < 2.0) return '#00ff9d';
+    if (mag < 3.0) return '#ffb703';
+    if (mag < 4.0) return '#ff6b35';
+    return '#ef233c';
+}
+
+let dayMarkers = [];
+
+function updateQuakes() {
+    fetch('/api/earthquakes/vic/day')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error || !data.features) return;
+            const features = data.features;
+            document.getElementById('q-day-count').textContent = features.length;
+            const mags = features.map(f => f.properties.mag).filter(Boolean);
+            document.getElementById('q-day-max').textContent = mags.length ? Math.max(...mags).toFixed(1) : '0';
+
+            dayMarkers.forEach(m => quakeMap.removeLayer(m));
+            dayMarkers = [];
+
+            features.forEach(f => {
+                const [lon, lat, depth] = f.geometry.coordinates;
+                const mag   = f.properties.mag || 0;
+                const place = f.properties.place || 'Victoria';
+                const m = L.circleMarker([lat, lon], {
+                    radius:      Math.max(4, mag * 4),
+                    color:       magColor(mag),
+                    fillColor:   magColor(mag),
+                    fillOpacity: 0.7, weight: 1
+                }).addTo(quakeMap)
+                  .bindPopup(`<b>M${mag.toFixed(1)}</b><br>${place}<br>${timeAEDT(f.properties.time)}<br>Depth: ${depth}km`);
+                dayMarkers.push(m);
+            });
+        })
+        .catch(() => {});
+
+    fetch('/api/earthquakes/vic/month')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error || !data.features) return;
+            const features = data.features;
+            document.getElementById('q-month-count').textContent = features.length;
+            const mags = features.map(f => f.properties.mag).filter(Boolean);
+            document.getElementById('q-month-max').textContent = mags.length ? Math.max(...mags).toFixed(1) : '0';
+            document.getElementById('quake-log-meta').textContent = `M0.5+ · ${features.length} events`;
+
+            const body = document.getElementById('quake-log-body');
+            if (!features.length) {
+                body.innerHTML = '<div class="no-data">No events in last 30 days</div>';
+                return;
+            }
+
+            body.innerHTML = features.map(f => {
+                const mag   = f.properties.mag?.toFixed(1) || '--';
+                const place = (f.properties.place || 'Victoria').replace(/, Australia/i, '');
+                const t     = timeAEDT(f.properties.time);
+                const depth = f.geometry.coordinates[2]?.toFixed(0) + 'km' || '--';
+                return `<div class="quake-row">
+                    <span class="quake-mag" style="color:${magColor(parseFloat(mag))}">M${mag}</span>
+                    <span class="quake-place">${place}</span>
+                    <span class="quake-time">${t}</span>
+                    <span class="quake-depth">${depth}</span>
+                </div>`;
+            }).join('');
+        })
+        .catch(() => {});
+}
+
+// ============================================================
+// INIT
+// ============================================================
+buildToggles();
+updateWeather();
+updateAirQuality();
+updateQuakes();
+
+setInterval(updateWeather,    1800000);
+setInterval(updateAirQuality, 3600000);
+setInterval(updateQuakes,      300000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Deep Space — API Hub</title>
+    <style>
+        :root {
+            --bg: #070b12;
+            --glass: rgba(255,255,255,0.04);
+            --glass-border: rgba(255,255,255,0.09);
+            --accent: #00d4ff;
+            --accent2: #00ff9d;
+            --accent3: #ff6b35;
+            --accent4: #c77dff;
+            --warn: #ffb703;
+            --danger: #ef233c;
+            --text: rgba(255,255,255,0.92);
+            --text-muted: rgba(255,255,255,0.55);
+            --text-dim: rgba(255,255,255,0.28);
+            --mono: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* --- Nav bar --- */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .topbar a {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .topbar a:hover { color: var(--text-muted); }
+
+        .topbar .title {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        /* --- Hero --- */
+        .hero {
+            position: relative;
+            width: 100%;
+            background: #000;
+        }
+
+        .hero-image {
+            width: 100%;
+            max-height: 80vh;
+            object-fit: cover;
+            display: block;
+        }
+
+        .hero-video {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border: none;
+            display: block;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 60px 32px 28px;
+            background: linear-gradient(to top, rgba(7,11,18,0.97) 0%, rgba(7,11,18,0.6) 60%, transparent 100%);
+        }
+
+        .hero-date {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--accent2);
+            margin-bottom: 10px;
+        }
+
+        .hero-title {
+            font-size: clamp(1.4rem, 4vw, 2.6rem);
+            font-weight: 600;
+            line-height: 1.2;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .hero-copyright {
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        /* --- Explanation --- */
+        .explanation-wrap {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 36px 24px 20px;
+        }
+
+        .explanation-label {
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 14px;
+        }
+
+        .explanation-text {
+            font-size: 0.95rem;
+            line-height: 1.85;
+            color: var(--text-muted);
+            font-weight: 300;
+        }
+
+        /* --- Thumbnail strip --- */
+        .strip-wrap {
+            padding: 32px 20px 40px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .strip-label {
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 14px;
+        }
+
+        .strip {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        @media (max-width: 700px) {
+            .strip { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        @media (max-width: 400px) {
+            .strip { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        .thumb {
+            aspect-ratio: 1 / 1;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            transition: border-color 0.2s, transform 0.15s;
+            position: relative;
+        }
+
+        .thumb:hover { border-color: rgba(255,255,255,0.2); transform: scale(1.03); }
+        .thumb.active { border-color: var(--accent2); }
+
+        .thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .thumb-video-label {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--mono);
+            font-size: 0.45rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .thumb-date {
+            position: absolute;
+            bottom: 4px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-family: var(--mono);
+            font-size: 0.4rem;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.5);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+        }
+
+        /* --- Loading / error states --- */
+        .loading {
+            text-align: center;
+            padding: 80px 20px;
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .error {
+            text-align: center;
+            padding: 80px 20px;
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--danger);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <a href="/">← API Hub</a>
+        <div class="title">Deep Space</div>
+        <a href="http://192.168.1.108:5000">Home</a>
+    </div>
+
+    <div id="main-content">
+        <div class="loading">Loading APOD...</div>
+    </div>
+
+    <div class="strip-wrap" id="strip-wrap" style="display:none">
+        <div class="strip-label">Last 7 Days</div>
+        <div class="strip" id="thumb-strip"></div>
+    </div>
+
+    <script>
+        let weekData = [];
+        let currentIndex = 0;
+
+        function formatDate(dateStr) {
+            const [y, m, d] = dateStr.split('-');
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
+        }
+
+        function renderHero(apod) {
+            const main = document.getElementById('main-content');
+
+            let mediaHtml = '';
+            if (apod.media_type === 'video') {
+                // Extract YouTube embed URL
+                let src = apod.url;
+                if (src.includes('youtube.com/watch?v=')) {
+                    src = src.replace('watch?v=', 'embed/');
+                } else if (src.includes('youtu.be/')) {
+                    const id = src.split('youtu.be/')[1].split('?')[0];
+                    src = `https://www.youtube.com/embed/${id}`;
+                }
+                mediaHtml = `<iframe class="hero-video" src="${src}" allowfullscreen></iframe>`;
+            } else {
+                const imgSrc = apod.hdurl || apod.url;
+                mediaHtml = `<img class="hero-image" src="${imgSrc}" alt="${apod.title}">`;
+            }
+
+            const copyright = apod.copyright ? `Image: ${apod.copyright.trim()}` : 'Public Domain — NASA';
+
+            main.innerHTML = `
+                <div class="hero">
+                    ${mediaHtml}
+                    <div class="hero-overlay">
+                        <div class="hero-date">${formatDate(apod.date)}</div>
+                        <div class="hero-title">${apod.title}</div>
+                        <div class="hero-copyright">${copyright}</div>
+                    </div>
+                </div>
+                <div class="explanation-wrap">
+                    <div class="explanation-label">Astronomer's Note</div>
+                    <div class="explanation-text">${apod.explanation}</div>
+                </div>
+            `;
+        }
+
+        function renderStrip(days) {
+            const strip = document.getElementById('thumb-strip');
+            const wrap = document.getElementById('strip-wrap');
+            strip.innerHTML = '';
+            wrap.style.display = 'block';
+
+            // Reverse so most recent is first
+            const sorted = [...days].reverse();
+
+            sorted.forEach((apod, i) => {
+                const div = document.createElement('div');
+                div.className = 'thumb' + (i === 0 ? ' active' : '');
+                div.dataset.index = i;
+
+                if (apod.media_type === 'video') {
+                    div.innerHTML = `
+                        <div class="thumb-video-label">Video</div>
+                        <div class="thumb-date">${apod.date.slice(5)}</div>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <img src="${apod.url}" alt="${apod.title}" loading="lazy">
+                        <div class="thumb-date">${apod.date.slice(5)}</div>
+                    `;
+                }
+
+                div.addEventListener('click', () => {
+                    document.querySelectorAll('.thumb').forEach(t => t.classList.remove('active'));
+                    div.classList.add('active');
+                    renderHero(apod);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+
+                strip.appendChild(div);
+            });
+        }
+
+        async function load() {
+            try {
+                const [todayRes, weekRes] = await Promise.all([
+                    fetch('/api/apod'),
+                    fetch('/api/apod/week')
+                ]);
+
+                const today = await todayRes.json();
+                const week = await weekRes.json();
+
+                if (today.error) throw new Error(today.error);
+
+                renderHero(today);
+
+                if (Array.isArray(week) && week.length > 0) {
+                    weekData = week;
+                    renderStrip(week);
+                }
+
+            } catch (e) {
+                document.getElementById('main-content').innerHTML =
+                    `<div class="error">Failed to load — ${e.message}</div>`;
+            }
+        }
+
+        load();
+    </script>
+
+</body>
+</html>

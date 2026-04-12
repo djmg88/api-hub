@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbital & Space Hub — API Hub</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    <style>
+        :root {
+            --bg: #070b12;
+            --glass: rgba(255,255,255,0.04);
+            --glass-border: rgba(255,255,255,0.09);
+            --accent: #00d4ff;
+            --accent2: #00ff9d;
+            --accent3: #ff6b35;
+            --accent4: #c77dff;
+            --warn: #ffb703;
+            --text: rgba(255,255,255,0.92);
+            --text-muted: rgba(255,255,255,0.55);
+            --text-dim: rgba(255,255,255,0.28);
+            --mono: 'SF Mono','Fira Code',monospace;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; overflow-x:hidden; }
+
+        .topbar { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 12px; }
+        .topbar a { font-family:var(--mono); font-size:0.55rem; letter-spacing:2.5px; text-transform:uppercase; color:var(--text-dim); text-decoration:none; }
+        .topbar a:hover { color:var(--text-muted); }
+        .topbar .title { font-family:var(--mono); font-size:0.55rem; letter-spacing:3px; text-transform:uppercase; color:var(--text-dim); }
+
+        .section { padding:24px 20px 0; max-width:1200px; margin:0 auto; }
+        .section-header { display:flex; align-items:baseline; gap:14px; margin-bottom:14px; }
+        .section-title { font-family:var(--mono); font-size:0.6rem; letter-spacing:3px; text-transform:uppercase; color:var(--text-muted); }
+        .section-meta { font-family:var(--mono); font-size:0.5rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); }
+
+        .pulse { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:6px; animation:pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.3)} }
+
+        /* ---- SOLAR SYSTEM MAP ---- */
+        .map-container {
+            background:#000;
+            border:1px solid var(--glass-border);
+            border-radius:14px;
+            overflow:hidden;
+            position:relative;
+            margin-bottom:14px;
+        }
+
+        #ss-svg { width:100%; display:block; cursor:grab; }
+        #ss-svg:active { cursor:grabbing; }
+
+        .view-toggle {
+            display:flex;
+            gap:8px;
+            margin-bottom:14px;
+        }
+
+        .vtbtn {
+            font-family:var(--mono);
+            font-size:0.48rem;
+            letter-spacing:1.5px;
+            text-transform:uppercase;
+            padding:7px 16px;
+            border-radius:6px;
+            border:1px solid var(--glass-border);
+            background:var(--glass);
+            color:var(--text-dim);
+            cursor:pointer;
+            transition:all 0.2s;
+        }
+
+        .vtbtn.active { border-color:var(--accent); color:var(--accent); background:rgba(0,212,255,0.08); }
+        .vtbtn:hover { border-color:var(--text-muted); color:var(--text-muted); }
+
+        .ss-legend {
+            display:flex;
+            gap:16px;
+            flex-wrap:wrap;
+            margin-bottom:28px;
+        }
+
+        .ss-legend-item {
+            display:flex;
+            align-items:center;
+            gap:6px;
+            font-family:var(--mono);
+            font-size:0.45rem;
+            letter-spacing:1px;
+            text-transform:uppercase;
+            color:var(--text-dim);
+        }
+
+        .ss-dot { width:8px; height:8px; border-radius:50%; }
+
+        /* Object tooltip */
+        .ss-tooltip {
+            position:absolute;
+            background:rgba(7,11,18,0.95);
+            border:1px solid var(--glass-border);
+            border-radius:8px;
+            padding:10px 14px;
+            font-family:var(--mono);
+            font-size:0.55rem;
+            pointer-events:none;
+            display:none;
+            z-index:20;
+            min-width:160px;
+            line-height:1.8;
+        }
+
+        .ss-tooltip .tt-name { font-size:0.75rem; font-weight:600; margin-bottom:4px; }
+
+        /* ---- FIREBALLS ---- */
+        .fireball-wrap {
+            border:1px solid var(--glass-border);
+            border-radius:14px;
+            overflow:hidden;
+            margin-bottom:28px;
+            background:#000;
+            position:relative;
+        }
+
+        #fb-svg { width:100%; display:block; }
+
+        .fb-stats {
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+            margin-bottom:14px;
+        }
+
+        .fb-pill {
+            background:var(--glass);
+            border:1px solid var(--glass-border);
+            border-radius:10px;
+            padding:10px 16px;
+        }
+
+        .fb-pill .fp-label { font-family:var(--mono); font-size:0.45rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:4px; }
+        .fb-pill .fp-val { font-family:var(--mono); font-size:1rem; font-weight:600; }
+
+        .fb-table-wrap {
+            background:var(--glass);
+            border:1px solid var(--glass-border);
+            border-radius:12px;
+            overflow:hidden;
+            margin-bottom:28px;
+        }
+
+        .fb-table { width:100%; border-collapse:collapse; }
+        .fb-table th { font-family:var(--mono); font-size:0.42rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:10px 14px; text-align:left; border-bottom:1px solid var(--glass-border); }
+        .fb-table td { font-family:var(--mono); font-size:0.55rem; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.03); color:var(--text-muted); }
+        .fb-table tr:last-child td { border-bottom:none; }
+        .fb-table .energy-high { color:var(--danger); font-weight:600; }
+        .fb-table .energy-med { color:var(--warn); }
+        .fb-table .energy-low { color:var(--accent2); }
+
+        /* ---- NEOS ---- */
+        .neo-stats {
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+            margin-bottom:14px;
+        }
+
+        .neo-pill {
+            background:var(--glass);
+            border:1px solid var(--glass-border);
+            border-radius:10px;
+            padding:10px 16px;
+        }
+
+        .neo-pill .np-label { font-family:var(--mono); font-size:0.45rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:4px; }
+        .neo-pill .np-val { font-family:var(--mono); font-size:1rem; font-weight:600; }
+
+        .neo-table-wrap {
+            background:var(--glass);
+            border:1px solid var(--glass-border);
+            border-radius:12px;
+            overflow:hidden;
+            margin-bottom:40px;
+        }
+
+        .neo-table { width:100%; border-collapse:collapse; }
+        .neo-table th { font-family:var(--mono); font-size:0.42rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:10px 14px; text-align:left; border-bottom:1px solid var(--glass-border); }
+        .neo-table td { font-family:var(--mono); font-size:0.55rem; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.03); color:var(--text-muted); }
+        .neo-table tr:last-child td { border-bottom:none; }
+        .hazard-yes { color:var(--danger); font-weight:700; }
+        .hazard-no  { color:var(--accent2); }
+
+        .no-data { font-family:var(--mono); font-size:0.55rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:20px; text-align:center; }
+
+        .footer { text-align:center; padding:20px; font-family:var(--mono); font-size:0.5rem; color:var(--text-dim); letter-spacing:2px; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <a href="/">← API Hub</a>
+    <div class="title">Orbital & Space Hub</div>
+    <a href="http://192.168.1.108:5000">Home</a>
+</div>
+
+<!-- ============================================================ SOLAR SYSTEM MAP -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--warn)"></span>Solar System — Live Positions</div>
+        <div class="section-meta" id="ss-meta">Loading JPL Horizons data...</div>
+    </div>
+
+    <div class="view-toggle">
+        <button class="vtbtn active" id="btn-inner" onclick="setView('inner')">Inner System</button>
+        <button class="vtbtn" id="btn-full" onclick="setView('full')">Full System</button>
+        <button class="vtbtn" id="btn-deep" onclick="setView('deep')">Deep Space</button>
+    </div>
+
+    <div class="map-container">
+        <svg id="ss-svg"></svg>
+        <div class="ss-tooltip" id="ss-tooltip">
+            <div class="tt-name" id="tt-name">--</div>
+            <div id="tt-body"></div>
+        </div>
+        <div style="position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:4px;z-index:10">
+            <button onclick="ssZoom(1.5)" style="font-family:var(--mono);font-size:1rem;width:32px;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(7,11,18,0.85);color:rgba(255,255,255,0.6);cursor:pointer;line-height:1">+</button>
+            <button onclick="ssZoom(0.67)" style="font-family:var(--mono);font-size:1rem;width:32px;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(7,11,18,0.85);color:rgba(255,255,255,0.6);cursor:pointer;line-height:1">−</button>
+            <button onclick="ssZoomReset()" style="font-family:var(--mono);font-size:0.45rem;width:32px;height:24px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(7,11,18,0.85);color:rgba(255,255,255,0.4);cursor:pointer;letter-spacing:1px">RST</button>
+        </div>
+    </div>
+
+    <div class="ss-legend">
+        <div class="ss-legend-item"><div class="ss-dot" style="background:#fff"></div>Planets</div>
+        <div class="ss-legend-item"><div class="ss-dot" style="background:#c8c8c8"></div>Moon</div>
+        <div class="ss-legend-item"><div class="ss-dot" style="background:#a0a0a0"></div>Dwarf Planets</div>
+        <div class="ss-legend-item"><div class="ss-dot" style="background:#00ff9d"></div>Spacecraft</div>
+        <div class="ss-legend-item"><div class="ss-dot" style="background:#ffb703"></div>NEOs</div>
+        <div class="ss-legend-item"><div class="ss-dot" style="background:#ff6b35"></div>Starman</div>
+    </div>
+</div>
+
+<!-- ============================================================ FIREBALLS -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--accent3)"></span>Fireball Events</div>
+        <div class="section-meta">NASA CNEOS atmospheric impact detections</div>
+    </div>
+
+    <div class="fb-stats" id="fb-stats"></div>
+
+    <div class="fireball-wrap">
+        <svg id="fb-svg"></svg>
+    </div>
+
+    <div class="fb-table-wrap">
+        <table class="fb-table">
+            <thead><tr>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Altitude km</th>
+                <th>Velocity km/s</th>
+                <th>Energy (kT TNT)</th>
+            </tr></thead>
+            <tbody id="fb-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ============================================================ NEOs -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--warn)"></span>Near Earth Objects — This Week</div>
+        <div class="section-meta" id="neo-meta">Loading...</div>
+    </div>
+
+    <div class="neo-stats" id="neo-stats"></div>
+
+    <div class="neo-table-wrap">
+        <table class="neo-table">
+            <thead><tr>
+                <th>Name</th>
+                <th>Closest Approach</th>
+                <th>Miss Distance (LD)</th>
+                <th>Miss Distance (km)</th>
+                <th>Diameter (m)</th>
+                <th>Velocity km/s</th>
+                <th>Hazardous</th>
+            </tr></thead>
+            <tbody id="neo-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="footer">192.168.1.108 · Solar System · JPL Horizons · NASA APIs · CNEOS</div>
+
+<script>
+// ============================================================
+// SOLAR SYSTEM MAP
+// ============================================================
+let ssData = null;
+let currentView = 'inner';
+
+// View configs: maxAU = max distance from sun shown
+const VIEWS = {
+    inner: { maxAU: 5.5,   label: 'Inner System (to Jupiter)' },
+    full:  { maxAU: 35,    label: 'Full System (to Neptune)' },
+    deep:  { maxAU: 170,   label: 'Deep Space (Voyager range)' }
+};
+
+// Known orbital semi-major axes for drawing orbit rings (AU)
+const ORBITS = {
+    'Mercury': 0.387, 'Venus': 0.723, 'Earth': 1.0,
+    'Mars': 1.524, 'Jupiter': 5.203, 'Saturn': 9.537,
+    'Uranus': 19.19, 'Neptune': 30.07, 'Pluto': 39.48, 'Ceres': 2.77
+};
+
+// Asteroid belt ring
+const BELT = { inner: 2.2, outer: 3.2 };
+
+let zoomBehaviour = null;
+let zoomGroup     = null;
+let currentScale  = 1;
+let currentTransX = 0;
+let currentTransY = 0;
+
+function ssZoom(factor) {
+    const svg = d3.select('#ss-svg');
+    if (zoomBehaviour) svg.transition().duration(300).call(zoomBehaviour.scaleBy, factor);
+}
+
+function ssZoomReset() {
+    const svg = d3.select('#ss-svg');
+    if (zoomBehaviour) svg.transition().duration(400).call(zoomBehaviour.transform, d3.zoomIdentity);
+}
+
+function setView(v) {
+    currentView = v;
+    document.querySelectorAll('.vtbtn').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn-' + v).classList.add('active');
+    // Reset zoom on view change
+    const svg = d3.select('#ss-svg');
+    if (zoomBehaviour) svg.call(zoomBehaviour.transform, d3.zoomIdentity);
+    drawSolarSystem();
+}
+
+function drawSolarSystem() {
+    if (!ssData) return;
+
+    const wrap  = document.getElementById('ss-svg').parentElement;
+    const W     = wrap.clientWidth;
+    const H     = Math.min(W * 0.75, 700);
+    const cx    = W / 2, cy = H / 2;
+    const maxAU = VIEWS[currentView].maxAU;
+    const scale = (Math.min(W, H) / 2 - 30) / maxAU;
+
+    const svg = d3.select('#ss-svg')
+        .attr('viewBox', `0 0 ${W} ${H}`)
+        .attr('width', W).attr('height', H)
+        .style('cursor', 'grab');
+
+    svg.selectAll('*').remove();
+
+    // Background
+    svg.append('rect').attr('width', W).attr('height', H).attr('fill', '#000');
+
+    // Stars (fixed, outside zoom group)
+    for (let i = 0; i < 250; i++) {
+        const opacity = 0.1 + Math.random() * 0.5;
+        svg.append('circle')
+           .attr('cx', Math.random()*W).attr('cy', Math.random()*H)
+           .attr('r', Math.random() * 1.3)
+           .attr('fill', `rgba(255,255,255,${opacity})`);
+    }
+
+    // Zoom group — everything that scales goes in here
+    zoomGroup = svg.append('g').attr('id', 'zoom-group');
+
+    // Draw static elements into zoom group
+    drawMapContents(zoomGroup, W, H, cx, cy, scale);
+
+    // Setup D3 zoom
+    zoomBehaviour = d3.zoom()
+        .scaleExtent([0.5, 20])
+        .on('zoom', (event) => {
+            zoomGroup.attr('transform', event.transform);
+            currentScale  = event.transform.k;
+            currentTransX = event.transform.x;
+            currentTransY = event.transform.y;
+            // Show/hide labels based on zoom level
+            zoomGroup.selectAll('.body-label')
+                .attr('display', function() {
+                    const cat = d3.select(this).attr('data-cat');
+                    if (cat === 'planet') return null;
+                    if (currentScale >= 2) return null;
+                    return 'none';
+                });
+        });
+
+    svg.call(zoomBehaviour);
+
+    // Zoom hint
+    svg.append('text')
+       .attr('x', W - 10).attr('y', H - 8)
+       .attr('text-anchor', 'end')
+       .attr('fill', 'rgba(255,255,255,0.2)')
+       .attr('font-family', 'SF Mono, monospace')
+       .attr('font-size', '9')
+       .text('scroll to zoom · drag to pan');
+}
+
+function drawMapContents(g, W, H, cx, cy, scale) {
+    const tooltip = document.getElementById('ss-tooltip');
+    const mapWrap = document.getElementById('ss-svg').parentElement;
+
+    // Orbit rings
+    Object.entries(ORBITS).forEach(([name, au]) => {
+        if (au * scale > Math.min(W,H)/2 + 10) return;
+        const isPlanet = ['Mercury','Venus','Earth','Mars','Jupiter','Saturn','Uranus','Neptune'].includes(name);
+        g.append('circle')
+         .attr('cx', cx).attr('cy', cy)
+         .attr('r', au * scale)
+         .attr('fill', 'none')
+         .attr('stroke', isPlanet ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.07)')
+         .attr('stroke-width', isPlanet ? 0.8 : 0.4)
+         .attr('stroke-dasharray', isPlanet ? '' : '3,4');
+    });
+
+    // Asteroid belt
+    if (BELT.outer * scale < Math.min(W,H) * 0.9) {
+        for (let i = 0; i < 350; i++) {
+            const r   = (BELT.inner + Math.random() * (BELT.outer - BELT.inner)) * scale;
+            const ang = Math.random() * 2 * Math.PI;
+            g.append('circle')
+             .attr('cx', cx + r * Math.cos(ang))
+             .attr('cy', cy + r * Math.sin(ang))
+             .attr('r', 0.7)
+             .attr('fill', 'rgba(180,150,100,0.3)');
+        }
+    }
+
+    // Sun
+    const sunR = VIEWS[currentView].maxAU > 50 ? 4 : VIEWS[currentView].maxAU > 20 ? 6 : 10;
+    const defs = g.append('defs');
+    const sunGrad = defs.append('radialGradient').attr('id', 'sunGrad');
+    sunGrad.append('stop').attr('offset','0%').attr('stop-color','#fff8e0');
+    sunGrad.append('stop').attr('offset','50%').attr('stop-color','#ffb703');
+    sunGrad.append('stop').attr('offset','100%').attr('stop-color','#ff6b00');
+    g.append('circle').attr('cx',cx).attr('cy',cy).attr('r',sunR+8)
+     .attr('fill','none').attr('stroke','rgba(255,183,3,0.12)').attr('stroke-width',10);
+    g.append('circle').attr('cx',cx).attr('cy',cy).attr('r',sunR)
+     .attr('fill','url(#sunGrad)');
+
+    // Collect label positions for collision detection
+    const labelPositions = [];
+
+    function findLabelPos(bx, by, r, name) {
+        // Try 8 candidate positions around the dot
+        const candidates = [
+            {x: bx + r + 5, y: by + 4},
+            {x: bx - r - 5 - name.length * 5, y: by + 4},
+            {x: bx + r + 5, y: by - 6},
+            {x: bx, y: by - r - 6},
+            {x: bx, y: by + r + 12},
+            {x: bx + r + 5, y: by + 14},
+            {x: bx - r - 5 - name.length * 5, y: by - 6},
+            {x: bx - r - 5 - name.length * 5, y: by + 14},
+        ];
+
+        const labelW = name.length * 5.5;
+        const labelH = 10;
+
+        for (const c of candidates) {
+            let overlaps = false;
+            for (const p of labelPositions) {
+                if (Math.abs(c.x - p.x) < labelW + 4 && Math.abs(c.y - p.y) < labelH + 2) {
+                    overlaps = true; break;
+                }
+            }
+            if (!overlaps) {
+                labelPositions.push({x: c.x, y: c.y});
+                return c;
+            }
+        }
+        // Fallback — push anyway
+        const fb = candidates[0];
+        labelPositions.push({x: fb.x, y: fb.y});
+        return fb;
+    }
+
+    // Sort: planets first so their labels get best positions
+    const bodies = Object.values(ssData).filter(b => b.dist_au * scale <= Math.min(W,H)/2 + 20);
+    bodies.sort((a,b) => {
+        const order = {planet:0, dwarf:1, spacecraft:2, neo:3};
+        return (order[a.category]||2) - (order[b.category]||2);
+    });
+
+    bodies.forEach(body => {
+        const bx = cx + body.x * scale;
+        const by = cy - body.y * scale;
+        const r  = body.size || 4;
+
+        // Planet glow
+        if (body.category === 'planet') {
+            g.append('circle').attr('cx',bx).attr('cy',by).attr('r',r+5)
+             .attr('fill','none').attr('stroke',body.color).attr('stroke-width',1).attr('opacity',0.25);
+        }
+
+        // Dot
+        const dot = g.append('circle')
+            .attr('class', 'body-dot')
+            .attr('cx', bx).attr('cy', by).attr('r', r)
+            .attr('fill', body.color)
+            .attr('data-name', body.name)
+            .style('cursor', 'pointer');
+
+        // Label — hidden for non-planets at zoom level 1
+        const lp  = findLabelPos(bx, by, r, body.name);
+        const lbl = g.append('text')
+            .attr('class', 'body-label')
+            .attr('data-cat', body.category)
+            .attr('x', lp.x).attr('y', lp.y)
+            .attr('fill', body.color)
+            .attr('font-family', 'SF Mono, Fira Code, monospace')
+            .attr('font-size', body.category === 'planet' ? '11' : '9')
+            .attr('opacity', body.category === 'planet' ? 1 : 0.75)
+            .attr('display', body.category === 'planet' ? null : 'none')
+            .text(body.name);
+
+        // Hover tooltip
+        dot.on('mousemove', function(event) {
+            const rect  = mapWrap.getBoundingClientRect();
+            const lightMins = (body.dist_au * 8.317).toFixed(1);
+            const lightUnit = body.dist_au > 60
+                ? `${(body.dist_au * 8.317 / 60).toFixed(1)} hours`
+                : `${lightMins} min`;
+            tooltip.style.display = 'block';
+            tooltip.style.left    = (event.clientX - rect.left + 14) + 'px';
+            tooltip.style.top     = (event.clientY - rect.top  - 10) + 'px';
+            document.getElementById('tt-name').textContent = body.name;
+            document.getElementById('tt-name').style.color = body.color;
+            document.getElementById('tt-body').innerHTML =
+                `Distance from Sun: ${body.dist_au.toFixed(3)} AU<br>` +
+                `Light travel time: ${lightUnit}<br>` +
+                `Type: ${body.category}` +
+                (body.name.includes('Voyager') || body.name.includes('Starman') || body.name.includes('Horizons')
+                    ? '<br><span style="color:rgba(255,255,255,0.4);font-size:0.9em">click to show trajectory</span>'
+                    : '');
+        })
+        .on('mouseleave', () => { tooltip.style.display = 'none'; });
+
+        // Click — show trajectory for Voyagers, Starman, New Horizons
+        const isDeepProbe = ['Voyager 1','Voyager 2','Starman/Roadster','New Horizons'].includes(body.name);
+        if (isDeepProbe) {
+            dot.on('click', function() {
+                tooltip.style.display = 'none';
+                // Remove existing trajectory
+                g.selectAll('.probe-trajectory').remove();
+                g.selectAll('.probe-trajectory-label').remove();
+
+                // Direction vector from sun through probe (normalised)
+                const mag = Math.sqrt(body.x**2 + body.y**2);
+                const nx  = body.x / mag;
+                const ny  = body.y / mag;
+
+                // Draw line from sun extending 1.5x past probe position
+                const extendAU = body.dist_au * 1.6;
+                const ex = cx + nx * extendAU * scale;
+                const ey = cy - ny * extendAU * scale;
+
+                // Dashed trajectory line
+                g.append('line')
+                 .attr('class', 'probe-trajectory')
+                 .attr('x1', cx).attr('y1', cy)
+                 .attr('x2', ex).attr('y2', ey)
+                 .attr('stroke', body.color)
+                 .attr('stroke-width', 1)
+                 .attr('stroke-dasharray', '4,4')
+                 .attr('opacity', 0.6);
+
+                // Distance label at end of line
+                const distLy = (body.dist_au * 0.0000158125).toExponential(2);
+                g.append('text')
+                 .attr('class', 'probe-trajectory-label')
+                 .attr('x', ex + 6).attr('y', ey)
+                 .attr('fill', body.color)
+                 .attr('font-family', 'SF Mono, monospace')
+                 .attr('font-size', '9')
+                 .attr('opacity', 0.8)
+                 .text(`${body.dist_au.toFixed(1)} AU`);
+
+                // Click again to remove
+                dot.on('click', function() {
+                    g.selectAll('.probe-trajectory').remove();
+                    g.selectAll('.probe-trajectory-label').remove();
+                    // Re-register original click
+                    dot.on('click', arguments.callee);
+                });
+            });
+        }
+    });
+}
+
+function loadSolarSystem() {
+    fetch('/api/solarsystem')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('ss-meta').textContent = 'Fetching positions from JPL Horizons... (~60s on first load)';
+                // Draw loading state
+                drawLoadingMap();
+                setTimeout(loadSolarSystem, 10000);
+                return;
+            }
+            ssData = data;
+            const count = Object.keys(data).length;
+            document.getElementById('ss-meta').textContent =
+                `${count} objects tracked · JPL Horizons · Updated daily`;
+            drawSolarSystem();
+        })
+        .catch(() => setTimeout(loadSolarSystem, 10000));
+}
+
+function drawLoadingMap() {
+    const wrap = document.getElementById('ss-svg').parentElement;
+    const W = wrap.clientWidth, H = Math.min(W * 0.75, 700);
+    const svg = d3.select('#ss-svg').attr('viewBox',`0 0 ${W} ${H}`).attr('width',W).attr('height',H);
+    svg.selectAll('*').remove();
+    svg.append('rect').attr('width',W).attr('height',H).attr('fill','#000');
+    // Stars
+    for (let i=0;i<200;i++) {
+        svg.append('circle').attr('cx',Math.random()*W).attr('cy',Math.random()*H)
+           .attr('r',Math.random()*1.2).attr('fill',`rgba(255,255,255,${0.1+Math.random()*0.3})`);
+    }
+    // Sun glow
+    const cx=W/2, cy=H/2;
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',16).attr('fill','none')
+       .attr('stroke','rgba(255,183,3,0.15)').attr('stroke-width',12);
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',8).attr('fill','#ffb703');
+    svg.append('text').attr('x',cx).attr('y',cy+40).attr('text-anchor','middle')
+       .attr('fill','rgba(255,255,255,0.3)').attr('font-family','SF Mono,monospace')
+       .attr('font-size','11').text('Querying JPL Horizons...');
+}
+
+window.addEventListener('resize', drawSolarSystem);
+
+// ============================================================
+// FIREBALLS
+// ============================================================
+function loadFireballs() {
+    fetch('/api/fireballs')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error || !data.data) return;
+            const rows = data.data;
+
+            // Stats
+            const energies = rows.map(r => parseFloat(r[8]) || 0).filter(e => e > 0);
+            const maxE = Math.max(...energies);
+            document.getElementById('fb-stats').innerHTML = `
+                <div class="fb-pill"><div class="fp-label">Events</div><div class="fp-val" style="color:var(--accent3)">${rows.length}</div></div>
+                <div class="fb-pill"><div class="fp-label">Largest Event</div><div class="fp-val" style="color:var(--warn)">${maxE.toFixed(1)} kT TNT</div></div>
+                <div class="fb-pill"><div class="fp-label">Data Source</div><div class="fp-val" style="color:var(--text-dim);font-size:0.6rem">NASA CNEOS</div></div>
+            `;
+
+            // D3 world map
+            const wrap = document.getElementById('fb-svg').parentElement;
+            const W = wrap.clientWidth, H = Math.round(W * 0.5);
+
+            const projection = d3.geoEquirectangular()
+                .scale(W / (2 * Math.PI))
+                .translate([W/2, H/2]);
+            const path = d3.geoPath().projection(projection);
+
+            const svg = d3.select('#fb-svg')
+                .attr('viewBox',`0 0 ${W} ${H}`)
+                .attr('width',W).attr('height',H);
+            svg.selectAll('*').remove();
+
+            svg.append('rect').attr('width',W).attr('height',H).attr('fill','#0a1628');
+
+            // Store circle refs by index for highlighting
+            const fbCircles = [];
+
+            d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(world => {
+                svg.append('g').selectAll('path')
+                    .data(topojson.feature(world, world.objects.countries).features)
+                    .join('path').attr('d',path)
+                    .attr('fill','#1a2535').attr('stroke','#2a3a50').attr('stroke-width',0.4);
+
+                rows.forEach((r, idx) => {
+                    const lat = parseFloat(r[3]);
+                    const lon = parseFloat(r[5]);
+                    const energy = parseFloat(r[8]) || 0.01;
+                    if (isNaN(lat)||isNaN(lon)) { fbCircles.push(null); return; }
+                    const [px,py] = projection([lon,lat]);
+                    const radius = Math.max(3, Math.min(16, Math.log10(energy+1)*8+3));
+                    const col = energy > 10 ? '#ef233c' : energy > 1 ? '#ffb703' : '#ff6b35';
+
+                    svg.append('circle').attr('cx',px).attr('cy',py).attr('r',radius+3)
+                       .attr('fill',col).attr('opacity',0.15);
+                    const dot = svg.append('circle').attr('cx',px).attr('cy',py).attr('r',radius)
+                       .attr('fill',col).attr('opacity',0.7).attr('data-idx', idx);
+                    fbCircles.push({ dot, px, py, col, radius });
+                });
+            });
+
+            // Table with click to highlight
+            const tbody = document.getElementById('fb-tbody');
+            tbody.innerHTML = rows.slice(0,15).map((r, idx) => {
+                const energy = parseFloat(r[8]) || 0;
+                const eCls   = energy > 10 ? 'energy-high' : energy > 1 ? 'energy-med' : 'energy-low';
+                const lat    = r[3] ? parseFloat(r[3]).toFixed(1)+'°' : '--';
+                const lon    = r[5] ? parseFloat(r[5]).toFixed(1)+'°' : '--';
+                const loc    = (r[3] && r[5]) ? `${lat}, ${lon}` : 'Unknown';
+                return `<tr style="cursor:pointer" onclick="highlightFireball(${idx})" id="fb-row-${idx}">
+                    <td>${r[0]||'--'}</td>
+                    <td>${loc}</td>
+                    <td>${r[7]||'--'}</td>
+                    <td>${r[6]||'--'}</td>
+                    <td class="${eCls}">${energy > 0 ? energy.toFixed(2) : '--'}</td>
+                </tr>`;
+            }).join('');
+
+            // Store circles globally for highlight function
+            window._fbCircles = fbCircles;
+            window._fbRows    = rows;
+        }).catch(() => {});
+}
+
+function highlightFireball(idx) {
+    const circles = window._fbCircles;
+    if (!circles) return;
+
+    // Reset all rows
+    document.querySelectorAll('[id^="fb-row-"]').forEach(r => r.style.background = '');
+    // Highlight clicked row
+    const row = document.getElementById(`fb-row-${idx}`);
+    if (row) row.style.background = 'rgba(255,107,53,0.15)';
+
+    // Scroll map into view and pulse the dot
+    document.getElementById('fb-svg').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    if (!circles[idx]) return;
+    const { dot, px, py, col, radius } = circles[idx];
+
+    // Remove old pulse
+    d3.select('#fb-svg').selectAll('.fb-pulse').remove();
+
+    // Add pulsing ring
+    const pulse = d3.select('#fb-svg').append('circle')
+        .attr('class', 'fb-pulse')
+        .attr('cx', px).attr('cy', py)
+        .attr('r', radius)
+        .attr('fill', 'none')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2)
+        .attr('opacity', 1);
+
+    // Animate pulse
+    (function expand() {
+        pulse.transition().duration(600)
+            .attr('r', radius + 12).attr('opacity', 0)
+            .on('end', () => {
+                pulse.attr('r', radius).attr('opacity', 1);
+                setTimeout(expand, 800);
+            });
+    })();
+
+    // Highlight the dot itself
+    dot.attr('opacity', 1).attr('r', radius + 3);
+    setTimeout(() => dot.attr('opacity', 0.7).attr('r', radius), 2000);
+}
+
+
+// ============================================================
+// NEOs
+// ============================================================
+function loadNEOs() {
+    fetch('/api/neo')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error || !data.near_earth_objects) return;
+            const allNeos = Object.values(data.near_earth_objects).flat();
+            allNeos.sort((a,b) => {
+                const da = parseFloat(a.close_approach_data[0]?.miss_distance?.lunar || 999);
+                const db = parseFloat(b.close_approach_data[0]?.miss_distance?.lunar || 999);
+                return da - db;
+            });
+
+            const hazardous = allNeos.filter(n => n.is_potentially_hazardous_asteroid);
+            const closest   = allNeos[0];
+            const closestLD = parseFloat(closest?.close_approach_data[0]?.miss_distance?.lunar || 0).toFixed(1);
+
+            document.getElementById('neo-meta').textContent = `${allNeos.length} objects this week · ${hazardous.length} potentially hazardous`;
+            document.getElementById('neo-stats').innerHTML = `
+                <div class="neo-pill"><div class="np-label">Total This Week</div><div class="np-val" style="color:var(--accent)">${allNeos.length}</div></div>
+                <div class="neo-pill"><div class="np-label">Potentially Hazardous</div><div class="np-val" style="color:var(--danger)">${hazardous.length}</div></div>
+                <div class="neo-pill"><div class="np-label">Closest Approach</div><div class="np-val" style="color:var(--warn)">${closestLD} LD</div></div>
+            `;
+
+            const tbody = document.getElementById('neo-tbody');
+            tbody.innerHTML = allNeos.slice(0,15).map(n => {
+                const ca     = n.close_approach_data[0] || {};
+                const ld     = parseFloat(ca.miss_distance?.lunar || 0).toFixed(2);
+                const km     = parseFloat(ca.miss_distance?.kilometers || 0);
+                const kmStr  = km > 1e6 ? (km/1e6).toFixed(2)+'M' : Math.round(km).toLocaleString();
+                const vel    = parseFloat(ca.relative_velocity?.kilometers_per_second || 0).toFixed(1);
+                const dMin   = parseFloat(n.estimated_diameter?.meters?.estimated_diameter_min || 0).toFixed(0);
+                const dMax   = parseFloat(n.estimated_diameter?.meters?.estimated_diameter_max || 0).toFixed(0);
+                const haz    = n.is_potentially_hazardous_asteroid;
+                return `<tr>
+                    <td>${n.name.replace(/[()]/g,'')}</td>
+                    <td>${ca.close_approach_date||'--'}</td>
+                    <td>${ld} LD</td>
+                    <td>${kmStr} km</td>
+                    <td>${dMin}–${dMax}</td>
+                    <td>${vel}</td>
+                    <td class="${haz?'hazard-yes':'hazard-no'}">${haz?'⚠ YES':'NO'}</td>
+                </tr>`;
+            }).join('');
+        }).catch(() => {});
+}
+
+// ============================================================
+// INIT
+// ============================================================
+drawLoadingMap();
+loadSolarSystem();
+loadFireballs();
+loadNEOs();
+</script>
+</body>
+</html>

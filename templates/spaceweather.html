@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Solar & Gravity Hub — API Hub</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg: #070b12;
+            --glass: rgba(255,255,255,0.04);
+            --glass-border: rgba(255,255,255,0.09);
+            --accent: #00d4ff;
+            --accent2: #00ff9d;
+            --accent3: #ff6b35;
+            --accent4: #c77dff;
+            --warn: #ffb703;
+            --danger: #ef233c;
+            --text: rgba(255,255,255,0.92);
+            --text-muted: rgba(255,255,255,0.55);
+            --text-dim: rgba(255,255,255,0.28);
+            --mono: 'SF Mono','Fira Code',monospace;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            background: var(--bg);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px 12px;
+        }
+
+        .topbar a {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            text-decoration: none;
+        }
+
+        .topbar a:hover { color: var(--text-muted); }
+
+        .topbar .title {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .section {
+            padding: 24px 20px 0;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .section-meta {
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50% { opacity:0.4; transform:scale(1.3); }
+        }
+
+        /* ---- BIG STATUS BAR ---- */
+        .status-bar {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 24px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .kp-big {
+            font-family: var(--mono);
+            font-size: 4rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .kp-label {
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .status-text {
+            font-family: var(--mono);
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .status-desc {
+            font-family: var(--mono);
+            font-size: 0.52rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+
+        .status-right {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .status-pill {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .status-pill .sp-label {
+            font-family: var(--mono);
+            font-size: 0.42rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+
+        .status-pill .sp-val {
+            font-family: var(--mono);
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        /* ---- SDO IMAGES ---- */
+        .sdo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 700px) { .sdo-grid { grid-template-columns: 1fr; } }
+
+        .sdo-card {
+            background: #000;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sdo-card img {
+            width: 100%;
+            display: block;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+        }
+
+        .sdo-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+            padding: 16px 12px 8px;
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .sdo-label .sdo-wave {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        /* ---- KP GAUGE ---- */
+        .kp-section {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 20px;
+            margin-bottom: 28px;
+            align-items: start;
+        }
+
+        @media (max-width: 700px) { .kp-section { grid-template-columns: 1fr; } }
+
+        .kp-gauge-wrap {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #kp-gauge { width: 100%; max-width: 240px; }
+
+        .kp-chart-wrap {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .chart-title {
+            font-family: var(--mono);
+            font-size: 0.48rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 14px;
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 180px;
+        }
+
+        .chart-wrap-tall {
+            position: relative;
+            height: 200px;
+        }
+
+        /* ---- AURORA ---- */
+        .aurora-wrap {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 28px;
+            position: relative;
+        }
+
+        .aurora-inner {
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .aurora-glow {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            position: relative;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .aurora-pct {
+            font-family: var(--mono);
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #fff;
+            position: relative;
+            z-index: 1;
+        }
+
+        .aurora-info { flex: 1; }
+
+        .aurora-title {
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .aurora-status {
+            font-family: var(--mono);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .aurora-desc {
+            font-family: var(--mono);
+            font-size: 0.52rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        .aurora-scale {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .aurora-scale-item {
+            font-family: var(--mono);
+            font-size: 0.42rem;
+            letter-spacing: 1px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--glass-border);
+            color: var(--text-dim);
+        }
+
+        .aurora-scale-item.active {
+            border-color: currentColor;
+            opacity: 1;
+        }
+
+        /* ---- CHARTS ---- */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        @media (max-width: 700px) { .chart-grid { grid-template-columns: 1fr; } }
+
+        .chart-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 18px 20px;
+        }
+
+        /* ---- ALERTS ---- */
+        .alerts-wrap {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-bottom: 28px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            line-height: 1.7;
+            color: var(--text-muted);
+        }
+
+        .alert-item:last-child { border-bottom: none; }
+
+        .alert-item .alert-time {
+            font-size: 0.45rem;
+            color: var(--text-dim);
+            margin-bottom: 3px;
+        }
+
+        .alert-item .alert-title {
+            color: var(--warn);
+            font-size: 0.6rem;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        /* ---- GRAVITATIONAL WAVES ---- */
+        .gw-status {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .gw-indicator {
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .gw-status-text {
+            font-family: var(--mono);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .gw-status-sub {
+            font-family: var(--mono);
+            font-size: 0.48rem;
+            color: var(--text-dim);
+            margin-top: 3px;
+            letter-spacing: 1px;
+        }
+
+        .gw-events {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+
+        .gw-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+
+        .gw-card.active-event {
+            border-color: rgba(239,35,60,0.5);
+            background: rgba(239,35,60,0.05);
+        }
+
+        .gw-card .gc-id {
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent4);
+            margin-bottom: 8px;
+        }
+
+        .gw-card .gc-type {
+            font-family: var(--mono);
+            font-size: 0.52rem;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .gw-card .gc-dist {
+            font-family: var(--mono);
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 2px;
+        }
+
+        .gw-card .gc-dist-label {
+            font-family: var(--mono);
+            font-size: 0.42rem;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .gw-card .gc-meta {
+            font-family: var(--mono);
+            font-size: 0.48rem;
+            color: var(--text-dim);
+            line-height: 1.8;
+        }
+
+        .gw-card .gc-status {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 0.42rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 6px;
+        }
+
+        .gc-status.confirmed { background: rgba(0,255,157,0.1); color: var(--accent2); border: 1px solid rgba(0,255,157,0.2); }
+        .gc-status.retracted { background: rgba(255,255,255,0.04); color: var(--text-dim); border: 1px solid var(--glass-border); }
+        .gc-status.preliminary { background: rgba(255,183,3,0.1); color: var(--warn); border: 1px solid rgba(255,183,3,0.2); }
+
+        .no-data {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            padding: 20px 0;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+        }
+
+        @media (max-width: 600px) { .section { padding: 16px 12px 0; } }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <a href="/">← API Hub</a>
+    <div class="title">Solar & Gravity Hub</div>
+    <a href="http://192.168.1.108:5000">Home</a>
+</div>
+
+<!-- ============================================================ STATUS -->
+<div class="section">
+    <div class="status-bar" id="status-bar">
+        <div class="status-left">
+            <div>
+                <div class="kp-big" id="kp-now">--</div>
+                <div class="kp-label">Kp Index</div>
+            </div>
+            <div>
+                <div class="status-text" id="status-text">Loading...</div>
+                <div class="status-desc" id="status-desc">Fetching space weather data</div>
+            </div>
+        </div>
+        <div class="status-right">
+            <div class="status-pill">
+                <div class="sp-label">Solar Wind</div>
+                <div class="sp-val" id="sw-speed" style="color:var(--accent3)">-- km/s</div>
+            </div>
+            <div class="status-pill">
+                <div class="sp-label">Bz Field</div>
+                <div class="sp-val" id="sw-bz" style="color:var(--accent4)">-- nT</div>
+            </div>
+            <div class="status-pill">
+                <div class="sp-label">X-Ray Class</div>
+                <div class="sp-val" id="xray-class" style="color:var(--warn)">--</div>
+            </div>
+            <div class="status-pill">
+                <div class="sp-label">Updated</div>
+                <div class="sp-val" id="sw-updated" style="color:var(--text-dim); font-size:0.65rem">--</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ SDO SOLAR IMAGES -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--accent3)"></span>Sun — Live SDO Imagery</div>
+        <div class="section-meta">NASA Solar Dynamics Observatory · Updates every 15 min</div>
+    </div>
+
+    <div class="sdo-grid">
+        <div class="sdo-card">
+            <img id="sdo-171" src="/api/sdo/0171" alt="SDO 171Å">
+            <div class="sdo-label">
+                <div class="sdo-wave" style="color:#ffb703">171 Å</div>
+                Corona · 600,000°C
+            </div>
+        </div>
+        <div class="sdo-card">
+            <img id="sdo-304" src="/api/sdo/0304" alt="SDO 304Å">
+            <div class="sdo-label">
+                <div class="sdo-wave" style="color:#ff6b35">304 Å</div>
+                Chromosphere · 50,000°C
+            </div>
+        </div>
+        <div class="sdo-card">
+            <img id="sdo-hmib" src="/api/sdo/HMIB" alt="SDO HMI Magnetic">
+            <div class="sdo-label">
+                <div class="sdo-wave" style="color:#00d4ff">HMI Magnetogram</div>
+                Surface Magnetic Field
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ KP + CHART -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title">Kp Index</div>
+        <div class="section-meta">Planetary geomagnetic activity · 3-hour intervals</div>
+    </div>
+
+    <div class="kp-section">
+        <div class="kp-gauge-wrap">
+            <div class="chart-title">Current Activity Level</div>
+            <canvas id="kp-gauge"></canvas>
+        </div>
+        <div class="kp-chart-wrap">
+            <div class="chart-title">7-Day Kp History</div>
+            <div class="chart-wrap-tall">
+                <canvas id="kp-chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ AURORA -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--accent2)"></span>Aurora Visibility — Melbourne</div>
+        <div class="section-meta">Based on current Kp · Lat -37.8°</div>
+    </div>
+
+    <div class="aurora-wrap" id="aurora-wrap">
+        <div class="aurora-inner">
+            <div class="aurora-glow" id="aurora-glow">
+                <div class="aurora-pct" id="aurora-pct">0%</div>
+            </div>
+            <div class="aurora-info">
+                <div class="aurora-title">Aurora Australis · Mooroolbark</div>
+                <div class="aurora-status" id="aurora-status">Unlikely</div>
+                <div class="aurora-desc" id="aurora-desc">Current geomagnetic conditions do not favour aurora at Melbourne's latitude.</div>
+                <div class="aurora-scale">
+                    <div class="aurora-scale-item" id="kp-scale-5">Kp 5 — Possible</div>
+                    <div class="aurora-scale-item" id="kp-scale-7">Kp 7 — Likely</div>
+                    <div class="aurora-scale-item" id="kp-scale-8">Kp 8 — Strong</div>
+                    <div class="aurora-scale-item" id="kp-scale-9">Kp 9 — Extreme</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ SOLAR WIND + XRAY CHARTS -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title">Solar Wind &amp; X-Ray Flux</div>
+        <div class="section-meta">7-day history · NOAA SWPC</div>
+    </div>
+
+    <div class="chart-grid">
+        <div class="chart-card">
+            <div class="chart-title">Solar Wind Speed (km/s)</div>
+            <div class="chart-wrap">
+                <canvas id="wind-chart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Bz (Magnetic Field North-South) nT</div>
+            <div class="chart-wrap">
+                <canvas id="bz-chart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">X-Ray Flux (Solar Flares)</div>
+            <div class="chart-wrap">
+                <canvas id="xray-chart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Solar Wind Proton Density (p/cm³)</div>
+            <div class="chart-wrap">
+                <canvas id="density-chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ NOAA ALERTS -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--warn)"></span>NOAA Space Weather Alerts</div>
+        <div class="section-meta" id="alerts-meta">Loading...</div>
+    </div>
+    <div class="alerts-wrap" id="alerts-wrap">
+        <div class="no-data">Loading alerts...</div>
+    </div>
+</div>
+
+<!-- ============================================================ GRAVITATIONAL WAVES -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--accent4)"></span>Gravitational Wave Detections</div>
+        <div class="section-meta">LIGO GraceDB · O4 Observing Run</div>
+    </div>
+
+    <div class="gw-status" id="gw-status-bar">
+        <div class="gw-indicator" id="gw-indicator" style="background:var(--accent2)"></div>
+        <div>
+            <div class="gw-status-text" id="gw-status-text">Checking for active detections...</div>
+            <div class="gw-status-sub" id="gw-status-sub">LIGO · Virgo · KAGRA interferometers</div>
+        </div>
+    </div>
+
+    <div class="gw-events" id="gw-events">
+        <div class="no-data">Loading gravitational wave data...</div>
+    </div>
+</div>
+
+<div class="footer">192.168.1.108 · Space Weather · NOAA SWPC · NASA SDO · LIGO GraceDB</div>
+
+<script>
+// ============================================================
+// HELPERS
+// ============================================================
+function timeAgo(isoStr) {
+    const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return `${Math.floor(diff/86400)}d ago`;
+}
+
+function kpColor(kp) {
+    if (kp < 4) return '#00ff9d';
+    if (kp < 5) return '#ffb703';
+    if (kp < 7) return '#ff6b35';
+    return '#ef233c';
+}
+
+function kpStatus(kp) {
+    if (kp < 4) return ['Quiet', 'Geomagnetic conditions are calm. No significant activity.'];
+    if (kp < 5) return ['Unsettled', 'Minor geomagnetic disturbance. No aurora expected at mid-latitudes.'];
+    if (kp < 6) return ['Active', 'Active geomagnetic conditions. Aurora possible at high latitudes.'];
+    if (kp < 7) return ['Minor Storm', 'G1 geomagnetic storm. Aurora possible at 65°+ latitude.'];
+    if (kp < 8) return ['Moderate Storm', 'G2-G3 storm. Aurora visible further south. Watch the skies, Melbourne.'];
+    if (kp < 9) return ['Severe Storm', 'G4 geomagnetic storm. Aurora likely visible from Melbourne!'];
+    return ['Extreme Storm', 'G5 — most severe. Aurora certain from Melbourne. GO OUTSIDE NOW.'];
+}
+
+function auroraInfo(kp) {
+    if (kp < 4) return { pct: 2, status: 'Unlikely', color: 'rgba(0,255,157,0.3)', desc: 'Geomagnetic conditions are quiet. No aurora expected at Melbourne\'s latitude of -37.8°.' };
+    if (kp < 5) return { pct: 10, status: 'Very Low', color: 'rgba(255,183,3,0.3)', desc: 'Unsettled conditions. Aurora confined to very high latitudes (70°+). Not visible from Melbourne.' };
+    if (kp < 6) return { pct: 20, status: 'Low', color: 'rgba(255,107,53,0.35)', desc: 'Active conditions. Aurora visible from Tasmania on dark, clear nights. Melbourne still unlikely.' };
+    if (kp < 7) return { pct: 40, status: 'Possible', color: 'rgba(255,107,53,0.5)', desc: 'G1 storm. Aurora may be visible on the southern horizon from dark rural sites near Melbourne.' };
+    if (kp < 8) return { pct: 65, status: 'Likely', color: 'rgba(239,35,60,0.5)', desc: 'G2-G3 storm! Aurora should be visible from Melbourne on the southern horizon. Head somewhere dark.' };
+    if (kp < 9) return { pct: 85, status: 'High', color: 'rgba(239,35,60,0.7)', desc: 'G4 severe storm! Aurora likely visible from Melbourne even from suburban locations. GO LOOK SOUTH.' };
+    return { pct: 99, status: 'EXTREME', color: 'rgba(199,125,255,0.8)', desc: 'G5 EXTREME STORM! Aurora absolutely visible from Melbourne. One of the rarest events — go outside NOW.' };
+}
+
+// ============================================================
+// KP GAUGE (doughnut)
+// ============================================================
+let kpGauge = null;
+
+function initKpGauge(kp) {
+    const ctx = document.getElementById('kp-gauge').getContext('2d');
+    if (kpGauge) kpGauge.destroy();
+
+    const col = kpColor(kp);
+    const filled = (kp / 9) * 270;
+
+    kpGauge = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [kp, 9 - kp],
+                backgroundColor: [col, 'rgba(255,255,255,0.06)'],
+                borderWidth: 0,
+                circumference: 270,
+                rotation: -135
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '72%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            }
+        },
+        plugins: [{
+            id: 'kpText',
+            afterDraw(chart) {
+                const { ctx, chartArea: { left, top, width, height } } = chart;
+                ctx.save();
+                ctx.font = `bold 36px 'SF Mono', monospace`;
+                ctx.fillStyle = col;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(kp.toFixed(1), left + width/2, top + height/2 + 10);
+                ctx.font = `11px 'SF Mono', monospace`;
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.fillText('Kp', left + width/2, top + height/2 + 34);
+                ctx.restore();
+            }
+        }]
+    });
+}
+
+// ============================================================
+// LOAD KP DATA
+// ============================================================
+let kpChartInst = null;
+
+function loadKp() {
+    fetch('/api/spaceweather/kp')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error || !Array.isArray(data)) return;
+
+            // data is array of [time_tag, kp, kp_frac]
+            const rows = data.filter(r => Array.isArray(r) && r[0] !== 'time_tag');
+            const latest = rows[rows.length - 1];
+            const kp = parseFloat(latest[1]) || 0;
+
+            // Update big display
+            const [statusText, statusDesc] = kpStatus(kp);
+            const col = kpColor(kp);
+
+            document.getElementById('kp-now').textContent = kp.toFixed(1);
+            document.getElementById('kp-now').style.color = col;
+            document.getElementById('status-text').textContent = statusText;
+            document.getElementById('status-text').style.color = col;
+            document.getElementById('status-desc').textContent = statusDesc;
+            document.getElementById('status-bar').style.borderColor = col.replace(')', ',0.3)').replace('rgb', 'rgba');
+
+            // Gauge
+            initKpGauge(kp);
+
+            // Aurora
+            const aurora = auroraInfo(kp);
+            document.getElementById('aurora-pct').textContent = aurora.pct + '%';
+            document.getElementById('aurora-status').textContent = aurora.status;
+            document.getElementById('aurora-status').style.color = aurora.pct > 50 ? '#ef233c' : aurora.pct > 20 ? '#ff6b35' : '#00ff9d';
+            document.getElementById('aurora-desc').textContent = aurora.desc;
+
+            // Aurora glow effect
+            const glow = document.getElementById('aurora-glow');
+            glow.style.background = aurora.color;
+            glow.style.boxShadow = aurora.pct > 10
+                ? `0 0 ${aurora.pct}px ${aurora.color}, 0 0 ${aurora.pct * 2}px ${aurora.color}`
+                : 'none';
+
+            // Scale highlights
+            ['5','7','8','9'].forEach(n => {
+                const el = document.getElementById(`kp-scale-${n}`);
+                if (kp >= parseInt(n)) {
+                    el.classList.add('active');
+                    el.style.color = col;
+                    el.style.borderColor = col;
+                    el.style.background = col.replace(')', ',0.1)').replace('rgb','rgba');
+                }
+            });
+
+            // Kp bar chart — last 40 readings
+            const recent = rows.slice(-40);
+            const labels  = recent.map(r => r[0].slice(5,16).replace('T',' '));
+            const values  = recent.map(r => parseFloat(r[1]) || 0);
+            const colors  = values.map(v => kpColor(v));
+
+            const ctx2 = document.getElementById('kp-chart').getContext('2d');
+            if (kpChartInst) kpChartInst.destroy();
+            kpChartInst = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                        borderRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            ticks: { color: 'rgba(255,255,255,0.2)', font: { size: 9 }, maxTicksLimit: 8, maxRotation: 0 },
+                            grid: { color: 'rgba(255,255,255,0.04)' }
+                        },
+                        y: {
+                            min: 0, max: 9,
+                            ticks: { color: 'rgba(255,255,255,0.25)', font: { size: 9 } },
+                            grid: { color: 'rgba(255,255,255,0.04)' }
+                        }
+                    }
+                }
+            });
+        }).catch(() => {});
+}
+
+// ============================================================
+// SOLAR WIND
+// ============================================================
+let windChart = null, bzChart = null, densityChart = null;
+
+function loadSolarWind() {
+    fetch('/api/spaceweather/solar_wind')
+        .then(r => r.json())
+        .then(data => {
+            const plasma = data.plasma;
+            const mag    = data.mag;
+
+            if (plasma && Array.isArray(plasma)) {
+                const rows   = plasma.filter(r => Array.isArray(r) && r[0] !== 'time_tag');
+                const recent = rows.slice(-100);
+                const labels = recent.map(r => r[0].slice(5,13));
+                const speeds = recent.map(r => parseFloat(r[2]) || 0);
+                const dens   = recent.map(r => parseFloat(r[1]) || 0);
+
+                // Current wind speed
+                const latestSpeed = speeds[speeds.length - 1];
+                document.getElementById('sw-speed').textContent = Math.round(latestSpeed) + ' km/s';
+                document.getElementById('sw-updated').textContent = new Date().toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
+
+                const ctx3 = document.getElementById('wind-chart').getContext('2d');
+                if (windChart) windChart.destroy();
+                windChart = new Chart(ctx3, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: speeds,
+                            borderColor: '#ff6b35',
+                            backgroundColor: 'rgba(255,107,53,0.08)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: 'rgba(255,255,255,0.2)', font:{size:9}, maxTicksLimit:8, maxRotation:0 }, grid: { color:'rgba(255,255,255,0.04)' } },
+                            y: { ticks: { color: 'rgba(255,255,255,0.25)', font:{size:9} }, grid: { color:'rgba(255,255,255,0.04)' } }
+                        }
+                    }
+                });
+
+                const ctx5 = document.getElementById('density-chart').getContext('2d');
+                if (densityChart) densityChart.destroy();
+                densityChart = new Chart(ctx5, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: dens,
+                            borderColor: '#00d4ff',
+                            backgroundColor: 'rgba(0,212,255,0.06)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color:'rgba(255,255,255,0.2)', font:{size:9}, maxTicksLimit:8, maxRotation:0 }, grid: { color:'rgba(255,255,255,0.04)' } },
+                            y: { ticks: { color:'rgba(255,255,255,0.25)', font:{size:9} }, grid: { color:'rgba(255,255,255,0.04)' } }
+                        }
+                    }
+                });
+            }
+
+            if (mag && Array.isArray(mag)) {
+                const mrows   = mag.filter(r => Array.isArray(r) && r[0] !== 'time_tag');
+                const mrecent = mrows.slice(-100);
+                const mlabels = mrecent.map(r => r[0].slice(5,13));
+                const bz      = mrecent.map(r => parseFloat(r[3]) || 0);
+
+                const latestBz = bz[bz.length - 1];
+                document.getElementById('sw-bz').textContent = latestBz.toFixed(1) + ' nT';
+                document.getElementById('sw-bz').style.color = latestBz < -10 ? '#ef233c' : latestBz < 0 ? '#ff6b35' : '#00ff9d';
+
+                const ctx4 = document.getElementById('bz-chart').getContext('2d');
+                if (bzChart) bzChart.destroy();
+                bzChart = new Chart(ctx4, {
+                    type: 'line',
+                    data: {
+                        labels: mlabels,
+                        datasets: [{
+                            data: bz,
+                            borderColor: '#c77dff',
+                            backgroundColor: 'rgba(199,125,255,0.06)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color:'rgba(255,255,255,0.2)', font:{size:9}, maxTicksLimit:8, maxRotation:0 }, grid: { color:'rgba(255,255,255,0.04)' } },
+                            y: {
+                                ticks: { color:'rgba(255,255,255,0.25)', font:{size:9} },
+                                grid: { color:'rgba(255,255,255,0.04)' },
+                                // Zero line
+                                afterDataLimits: scale => { scale.min = Math.min(scale.min, -5); scale.max = Math.max(scale.max, 5); }
+                            }
+                        }
+                    }
+                });
+            }
+        }).catch(() => {});
+}
+
+// ============================================================
+// X-RAY FLUX
+// ============================================================
+let xrayChartInst = null;
+
+function loadXray() {
+    fetch('/api/spaceweather/xray')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error || !Array.isArray(data)) return;
+
+            // Filter to long channel 0.1-0.8nm, objects with flux key
+            const longCh = data.filter(r => r.energy === '0.1-0.8nm' && r.flux != null).slice(-200);
+            if (longCh.length === 0) return;
+
+            const labels = longCh.map(r => r.time_tag.slice(5,13));
+            const values = longCh.map(r => Math.max(parseFloat(r.flux) || 1e-9, 1e-9));
+
+            // Current class
+            const latest = values[values.length - 1];
+            let cls = 'A';
+            if (latest >= 1e-4) cls = 'X';
+            else if (latest >= 1e-5) cls = 'M';
+            else if (latest >= 1e-6) cls = 'C';
+            else if (latest >= 1e-7) cls = 'B';
+            document.getElementById('xray-class').textContent = cls + '-class';
+
+            const ctx6 = document.getElementById('xray-chart').getContext('2d');
+            if (xrayChartInst) xrayChartInst.destroy();
+            xrayChartInst = new Chart(ctx6, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values.map(v => Math.log10(v)),
+                        borderColor: '#ffb703',
+                        backgroundColor: 'rgba(255,183,3,0.06)',
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        fill: true,
+                        tension: 0.2
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color:'rgba(255,255,255,0.2)', font:{size:9}, maxTicksLimit:8, maxRotation:0 }, grid:{color:'rgba(255,255,255,0.04)'} },
+                        y: {
+                            min: -9, max: -3,
+                            ticks: {
+                                color:'rgba(255,255,255,0.25)', font:{size:9},
+                                callback: v => ['-9','A','B','C','M','X'][v+9] !== undefined ? ['A','B','C','M','X','X+'][Math.min(v+9,5)] : ''
+                            },
+                            grid: { color:'rgba(255,255,255,0.04)' }
+                        }
+                    }
+                }
+            });
+        }).catch(() => {});
+}
+
+// ============================================================
+// NOAA ALERTS
+// ============================================================
+function loadAlerts() {
+    fetch('/api/spaceweather/alerts')
+        .then(r => r.json())
+        .then(data => {
+            const wrap = document.getElementById('alerts-wrap');
+            if (data.error || !Array.isArray(data) || data.length === 0) {
+                wrap.innerHTML = '<div class="no-data">No active alerts</div>';
+                document.getElementById('alerts-meta').textContent = 'No current alerts';
+                return;
+            }
+
+            const recent = data.slice(0, 15);
+            document.getElementById('alerts-meta').textContent = `${data.length} alerts · Latest: ${timeAgo(recent[0].issue_datetime)}`;
+
+            wrap.innerHTML = recent.map(a => `
+                <div class="alert-item">
+                    <div class="alert-time">${a.issue_datetime ? new Date(a.issue_datetime).toLocaleString('en-AU') : '--'}</div>
+                    <div class="alert-title">${a.product_id || 'Alert'}</div>
+                    <div>${(a.message || '').slice(0, 300)}${(a.message||'').length > 300 ? '...' : ''}</div>
+                </div>
+            `).join('');
+        }).catch(() => {
+            document.getElementById('alerts-wrap').innerHTML = '<div class="no-data">Alert data unavailable</div>';
+        });
+}
+
+// ============================================================
+// GRAVITATIONAL WAVES
+// ============================================================
+
+// Known confirmed O4 detections as fallback when LIGO is in MDC/commissioning
+const O4_CONFIRMED = [
+    { id:'S230529ay', type:'Binary Black Hole', distLy:'3.26 billion ly', distMpc:'~1000 Mpc', date:'29 May 2023', cls:'BBH 97%', status:'confirmed' },
+    { id:'S230627c',  type:'Binary Black Hole', distLy:'5.2 billion ly',  distMpc:'~1600 Mpc', date:'27 Jun 2023', cls:'BBH 95%', status:'confirmed' },
+    { id:'S230708cf', type:'Neutron Star + Black Hole', distLy:'1.3 billion ly', distMpc:'~400 Mpc', date:'8 Jul 2023', cls:'NSBH 88%', status:'confirmed' },
+    { id:'S230723ac', type:'Binary Black Hole', distLy:'4.2 billion ly',  distMpc:'~1300 Mpc', date:'23 Jul 2023', cls:'BBH 92%', status:'confirmed' },
+    { id:'S231113bw', type:'Binary Neutron Star', distLy:'490 million ly', distMpc:'~150 Mpc', date:'13 Nov 2023', cls:'BNS 91%', status:'confirmed' },
+    { id:'S240422ed', type:'Binary Black Hole', distLy:'6.5 billion ly',  distMpc:'~2000 Mpc', date:'22 Apr 2024', cls:'BBH 98%', status:'confirmed' },
+];
+
+function loadGravWaves() {
+    fetch('/api/gravwaves')
+        .then(r => r.json())
+        .then(data => {
+            const statusEl = document.getElementById('gw-status-text');
+            const subEl    = document.getElementById('gw-status-sub');
+            const indEl    = document.getElementById('gw-indicator');
+            const container = document.getElementById('gw-events');
+
+            if (data.error || !data.superevents) {
+                showHistoricalGW();
+                return;
+            }
+
+            // Filter to real events only (S-prefix = production, not MDC/test)
+            const realEvents = (data.superevents || []).filter(e =>
+                !e.superevent_id.startsWith('M') && !e.superevent_id.startsWith('T')
+            );
+
+            // Check if LIGO is in MDC/commissioning mode
+            const allMDC = data.superevents.length > 0 && realEvents.length === 0;
+
+            if (allMDC) {
+                statusEl.textContent = 'Interferometers in Mock Data Challenge Mode';
+                statusEl.style.color = '#ffb703';
+                indEl.style.background = '#ffb703';
+                indEl.style.boxShadow = '0 0 8px #ffb703';
+                subEl.textContent = 'LIGO · Virgo · KAGRA running MDC — not live observing. Showing recent confirmed O4 detections.';
+                showHistoricalGW();
+                return;
+            }
+
+            // Real live events found
+            const active = realEvents.filter(e => {
+                const age = (Date.now() - new Date(e.created).getTime()) / 3600000;
+                return age < 48 && !e.labels?.includes('RETRACTED');
+            });
+
+            if (active.length > 0) {
+                statusEl.textContent = `${active.length} Active Detection${active.length > 1 ? 's' : ''} — LIGO is ringing`;
+                statusEl.style.color = '#ef233c';
+                indEl.style.background = '#ef233c';
+                indEl.style.boxShadow = '0 0 14px #ef233c';
+                subEl.textContent = 'Ripples in spacetime detected within the last 48 hours';
+            } else {
+                statusEl.textContent = 'No Active Detections — Observing';
+                statusEl.style.color = '#00ff9d';
+                indEl.style.background = '#00ff9d';
+                subEl.textContent = `${realEvents.length} confirmed O4 events · Interferometers listening`;
+            }
+
+            container.innerHTML = realEvents.slice(0, 6).map(e => gwCard(e)).join('');
+        })
+        .catch(() => showHistoricalGW());
+}
+
+function showHistoricalGW() {
+    document.getElementById('gw-events').innerHTML = O4_CONFIRMED.map(e => `
+        <div class="gw-card">
+            <div class="gc-id">${e.id}</div>
+            <div class="gc-type">${e.type}</div>
+            <div class="gc-dist">${e.distLy}</div>
+            <div class="gc-dist-label">${e.distMpc} from Earth</div>
+            <div class="gc-meta">
+                Detected: ${e.date}<br>
+                Classification: ${e.cls}
+            </div>
+            <span class="gc-status confirmed">Confirmed O4</span>
+        </div>
+    `).join('');
+}
+
+function gwCard(e) {
+    const ed        = e.preferred_event_data || {};
+    const labels    = e.labels || [];
+    const retracted = labels.includes('RETRACTED');
+    const created   = new Date(e.created).toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'});
+    const distMpc   = ed.distance || ed.luminosity_distance;
+    const distLy    = distMpc ? (distMpc * 3.26e6).toExponential(2) + ' ly' : 'Unknown';
+    const statusClass = retracted ? 'retracted' : labels.includes('CONFIRMED') ? 'confirmed' : 'preliminary';
+    const statusLabel = retracted ? 'Retracted' : labels.includes('CONFIRMED') ? 'Confirmed' : 'Preliminary';
+    const isRecent  = (Date.now() - new Date(e.created).getTime()) < 172800000 && !retracted;
+
+    return `<div class="gw-card ${isRecent ? 'active-event' : ''}">
+        <div class="gc-id">${e.superevent_id}</div>
+        <div class="gc-type">${ed.search || 'Unknown'}</div>
+        <div class="gc-dist">${distLy}</div>
+        <div class="gc-dist-label">${distMpc ? Math.round(distMpc) + ' Mpc' : '--'} from Earth</div>
+        <div class="gc-meta">Detected: ${created}</div>
+        <span class="gc-status ${statusClass}">${statusLabel}</span>
+    </div>`;
+}
+
+// ============================================================
+// SDO IMAGE REFRESH
+// ============================================================
+function refreshSDO() {
+    const t = Date.now();
+    document.getElementById('sdo-171').src  = '/api/sdo/0171?' + t;
+    document.getElementById('sdo-304').src  = '/api/sdo/0304?' + t;
+    document.getElementById('sdo-hmib').src = '/api/sdo/HMIB?' + t;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+loadKp();
+loadSolarWind();
+loadXray();
+loadAlerts();
+loadGravWaves();
+
+setInterval(loadKp,        600000);   // 10 min
+setInterval(loadSolarWind, 300000);   // 5 min
+setInterval(loadXray,      300000);   // 5 min
+setInterval(loadAlerts,    300000);   // 5 min
+setInterval(loadGravWaves, 300000);   // 5 min
+setInterval(refreshSDO,    900000);   // 15 min
+</script>
+</body>
+</html>

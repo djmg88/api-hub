@@ -1,0 +1,501 @@
+from flask import Flask, render_template, jsonify
+import requests, threading, time, datetime
+
+app = Flask(__name__)
+
+NASA_KEY      = "D4fL2nbc434oawadYKVWc0dKB12hCBidGUYJXZpN"
+AQICN_KEY     = "f939b0945911f520627cd2820cd7827603d15344"
+OWM_KEY       = "a2ad2c01ea42bc578b23d80775bfc974"
+EPA_KEY       = "ce469fc9d073425b9bbd9c44bda741f9"
+EPA_SITE_ID   = "9348c1f5-60c5-4c35-b4f1-1f0931ab1415"
+
+OPENSKY_CLIENT_ID     = "djmg1988-api-client"
+OPENSKY_CLIENT_SECRET = "ca0OzWSHIFafrrRkfrGfN2MWXr6JvMme"
+OPENSKY_TOKEN_URL     = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
+
+OPENSKY_BOUNDS = {
+    "lamin": -38.5, "lamax": -37.0,
+    "lomin": 144.5, "lomax": 146.5
+}
+
+OBS_LAT  = -37.7939
+OBS_LON  = 145.3214
+OBS_ELEV = 119
+
+cache = {}
+opensky_token = {"value": None, "expires": 0}
+
+# ---------------------------------------------------------------------------
+# OpenSky OAuth2
+# ---------------------------------------------------------------------------
+
+def get_opensky_token():
+    now = time.time()
+    if opensky_token["value"] and opensky_token["expires"] > now + 60:
+        return opensky_token["value"]
+    try:
+        r = requests.post(OPENSKY_TOKEN_URL, data={
+            "grant_type":    "client_credentials",
+            "client_id":     OPENSKY_CLIENT_ID,
+            "client_secret": OPENSKY_CLIENT_SECRET,
+        }, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        opensky_token["value"]   = data["access_token"]
+        opensky_token["expires"] = now + data.get("expires_in", 1800)
+        return opensky_token["value"]
+    except Exception as e:
+        print(f"OpenSky token error: {e}")
+        return None
+
+def refresh_flights():
+    while True:
+        try:
+            token = get_opensky_token()
+            headers = {"Authorization": f"Bearer {token}"} if token else {}
+            r = requests.get(
+                "https://opensky-network.org/api/states/all",
+                params=OPENSKY_BOUNDS, headers=headers, timeout=10
+            )
+            r.raise_for_status()
+            cache["flights"] = {"data": r.json(), "ts": time.time(), "error": None}
+        except Exception as e:
+            old = cache.get("flights", {}).get("data")
+            cache["flights"] = {"data": old, "ts": time.time(), "error": str(e)}
+        time.sleep(30)
+
+# ---------------------------------------------------------------------------
+# Generic refresh
+# ---------------------------------------------------------------------------
+
+def refresh(key, url, interval, params=None, headers=None, startup_delay=0):
+    if startup_delay:
+        time.sleep(startup_delay)
+    while True:
+        try:
+            r = requests.get(url, params=params, headers=headers, timeout=30)
+            r.raise_for_status()
+            cache[key] = {"data": r.json(), "ts": time.time(), "error": None}
+        except Exception as e:
+            old = cache.get(key, {}).get("data")
+            cache[key] = {"data": old, "ts": time.time(), "error": str(e)}
+        time.sleep(interval)
+
+def start(key, url, interval, params=None, headers=None, startup_delay=0):
+    t = threading.Thread(target=refresh, args=(key, url, interval),
+                         kwargs={"params": params, "headers": headers, "startup_delay": startup_delay}, daemon=True)
+    t.start()
+
+# ---------------------------------------------------------------------------
+# EPA refresh — no query params needed, returns latest
+# ---------------------------------------------------------------------------
+
+def refresh_epa():
+    time.sleep(15)
+    while True:
+        try:
+            r = requests.get(
+                f"https://gateway.api.epa.vic.gov.au/environmentMonitoring/v1/sites/{EPA_SITE_ID}/parameters",
+                headers={"X-API-Key": EPA_KEY, "User-Agent": "curl/7.88.1", "Accept": "application/json"},
+                timeout=30
+            )
+            r.raise_for_status()
+            cache["epa_air"] = {"data": r.json(), "ts": time.time(), "error": None}
+        except Exception as e:
+            old = cache.get("epa_air", {}).get("data")
+            cache["epa_air"] = {"data": old, "ts": time.time(), "error": str(e)}
+        time.sleep(3600)
+
+# ---------------------------------------------------------------------------
+# Starlink TLE refresh — proxy CelesTrak through Flask
+# ---------------------------------------------------------------------------
+
+def refresh_starlink_tle():
+    time.sleep(20)
+    while True:
+        try:
+            # Fetch 500 Starlink TLEs from Ivan's API (paginated, 100 per page)
+            all_tles = []
+            for page in range(1, 6):
+                r = requests.get(
+                    "https://tle.ivanstanojevic.me/api/tle/",
+                    params={"search": "starlink", "page-size": 100, "page": page},
+                    headers={"User-Agent": "curl/7.88.1"},
+                    timeout=30
+                )
+                r.raise_for_status()
+                data = r.json()
+                members = data.get("member", [])
+                if not members:
+                    break
+                for sat in members:
+                    name = sat.get("name", "STARLINK")
+                    l1   = sat.get("line1", "")
+                    l2   = sat.get("line2", "")
+                    if l1 and l2:
+                        all_tles.append(f"{name}\n{l1}\n{l2}")
+                time.sleep(0.5)  # be polite
+
+            if all_tles:
+                cache["starlink_tle"] = {"data": "\n".join(all_tles), "ts": time.time(), "error": None}
+        except Exception as e:
+            old = cache.get("starlink_tle", {}).get("data")
+            cache["starlink_tle"] = {"data": old, "ts": time.time(), "error": str(e)}
+        time.sleep(21600)  # refresh every 6 hours
+
+
+
+def fetch_horizons_body(target, center='@sun'):
+    """Fetch current ecliptic XY position from JPL Horizons."""
+    now  = datetime.datetime.utcnow()
+    stop = now + datetime.timedelta(hours=1)
+    # Horizons requires format: 'YYYY-Mon-DD HH:MM'
+    fmt  = '%Y-%b-%d %H:%M'
+    params = {
+        'format':     'json',
+        'COMMAND':    f"'{target}'",
+        'OBJ_DATA':   'NO',
+        'MAKE_EPHEM': 'YES',
+        'EPHEM_TYPE': 'VECTORS',
+        'CENTER':     "'@sun'",
+        'START_TIME': f"'{now.strftime(fmt)}'",
+        'STOP_TIME':  f"'{stop.strftime(fmt)}'",
+        'STEP_SIZE':  "'1h'",
+        'VEC_TABLE':  '2',
+        'CSV_FORMAT': 'YES'
+    }
+    r = requests.get('https://ssd.jpl.nasa.gov/api/horizons.api', params=params, timeout=30)
+    r.raise_for_status()
+    text = r.json().get('result','')
+    # Parse $$SOE ... $$EOE block
+    lines    = text.split('\n')
+    in_block = False
+    for line in lines:
+        if '$$SOE' in line: in_block = True; continue
+        if '$$EOE' in line: break
+        if in_block and line.strip():
+            parts = line.split(',')
+            if len(parts) >= 6:
+                try:
+                    x    = float(parts[2].strip())
+                    y    = float(parts[3].strip())
+                    z    = float(parts[4].strip())
+                    dist = (x**2 + y**2 + z**2)**0.5 / 1.496e8
+                    return {'x': x/1.496e8, 'y': y/1.496e8, 'z': z/1.496e8, 'dist_au': dist}
+                except: pass
+    return None
+
+def refresh_horizons():
+    time.sleep(5)
+    # target_id: (label, color, size_px, category)
+    bodies = {
+        '199':     ('Mercury',        '#b5b5b5', 5,  'planet'),
+        '299':     ('Venus',          '#e8cda0', 6,  'planet'),
+        '399':     ('Earth',          '#4fa3e0', 7,  'planet'),
+        '301':     ('Moon',           '#c8c8c8', 3,  'moon'),
+        '499':     ('Mars',           '#c1440e', 6,  'planet'),
+        '599':     ('Jupiter',        '#c88b3a', 12, 'planet'),
+        '699':     ('Saturn',         '#e4d191', 10, 'planet'),
+        '799':     ('Uranus',         '#7de8e8', 8,  'planet'),
+        '899':     ('Neptune',        '#5b7fde', 8,  'planet'),
+        '999':     ('Pluto',          '#c2a379', 4,  'dwarf'),
+        '2000001': ('Ceres',          '#a0a0a0', 4,  'dwarf'),
+        '-31':     ('Voyager 1',      '#00ff9d', 4,  'spacecraft'),
+        '-32':     ('Voyager 2',      '#00d4ff', 4,  'spacecraft'),
+        '-143205': ('Starman/Roadster','#ff6b35',4,  'spacecraft'),
+        '-227':    ('New Horizons',   '#c77dff', 4,  'spacecraft'),
+        '-74':     ('Mars Recon. Orb.','#ff6b35',3,  'spacecraft'),
+        '-48':     ('Parker Solar Probe','#ffb703',3,'spacecraft'),
+        '-151':    ('JWST',           '#00d4ff', 3,  'spacecraft'),
+        '2000433': ('433 Eros',       '#ffb703', 4,  'neo'),
+        '2004179': ('4179 Toutatis',  '#ffb703', 3,  'neo'),
+        '2001036': ('1036 Ganymed',   '#ffb703', 3,  'neo'),
+        '2000887': ('887 Alinda',     '#ffb703', 3,  'neo'),
+        '2025143': ('25143 Itokawa',  '#ffb703', 3,  'neo'),
+        '2001620': ('1620 Geographos','#ffb703', 3,  'neo'),
+        '2001866': ('1866 Sisyphus',  '#ffb703', 3,  'neo'),
+        '2003552': ('3552 Don Quixote','#ffb703',3,  'neo'),
+        '2001980': ('1980 Tezcatlipoca','#ffb703',3, 'neo'),
+        '2005011': ('5011 Ptah',      '#ffb703', 3,  'neo'),
+    }
+    while True:
+        results = {}
+        for target_id, meta in bodies.items():
+            try:
+                pos = fetch_horizons_body(target_id)
+                if pos:
+                    results[target_id] = {
+                        'name':     meta[0],
+                        'color':    meta[1],
+                        'size':     meta[2],
+                        'category': meta[3],
+                        **pos
+                    }
+                time.sleep(0.3)
+            except Exception as e:
+                print(f"Horizons error {target_id}: {e}")
+        if results:
+            cache['horizons'] = {'data': results, 'ts': time.time(), 'error': None}
+        time.sleep(86400)  # refresh daily
+
+def init_cache():
+    # Sky Watch
+    threading.Thread(target=refresh_flights, daemon=True).start()
+    start("iss_pos",    "http://api.open-notify.org/iss-now.json", 30)
+    start("iss_crew",   "http://api.open-notify.org/astros.json", 21600)
+    start("iss_passes", "http://api.open-notify.org/iss-pass.json", 3600,
+          params={"lat": OBS_LAT, "lon": OBS_LON, "n": 5})
+    start("starlink", "https://api.celestrak.com/SOCRATES/query.php", 600, params={
+        "OBJECT": "STARLINK", "OBS_LAT": OBS_LAT, "OBS_LON": OBS_LON,
+        "OBS_ELEVATION": OBS_ELEV, "DAYS": 2, "MAX_MATCHES": 10, "FORMAT": "JSON"
+    })
+
+    # Space Weather
+    start("kp",                "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json", 600)
+    start("solar_wind_plasma", "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json", 300)
+    start("solar_wind_mag",    "https://services.swpc.noaa.gov/products/solar-wind/mag-7-day.json", 300)
+    start("sw_alerts",         "https://services.swpc.noaa.gov/products/alerts.json", 300)
+    start("xray",              "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json", 300)
+    start("gravwaves",         "https://gracedb.ligo.org/api/superevents/?format=json&order=-created&page_size=10", 300)
+
+    # Solar System
+
+    today = datetime.date.today()
+    start("neo", "https://api.nasa.gov/neo/rest/v1/feed", 21600, params={
+        "start_date": today.isoformat(),
+        "end_date":   (today + datetime.timedelta(days=7)).isoformat(),
+        "api_key":    NASA_KEY
+    })
+    start("fireballs", "https://ssd-api.jpl.nasa.gov/fireball.api", 3600, params={"limit": 20})
+
+    # Solar System — Horizons positions (planets, spacecraft, NEOs, Starman)
+    threading.Thread(target=refresh_horizons, daemon=True).start()
+    start("apod_week", "https://api.nasa.gov/planetary/apod", 21600, params={
+        "api_key":    NASA_KEY,
+        "start_date": (today - datetime.timedelta(days=7)).isoformat(),
+        "end_date":   (today - datetime.timedelta(days=1)).isoformat()
+    })
+
+    # Earth — Weather
+    start("weather_current", "https://api.open-meteo.com/v1/forecast", 1800, params={
+        "latitude":            OBS_LAT,
+        "longitude":           OBS_LON,
+        "current":             "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,surface_pressure,cloud_cover,visibility",
+        "hourly":              "temperature_2m,relative_humidity_2m,precipitation_probability,cloud_cover,uv_index,wind_speed_10m,surface_pressure,visibility,weather_code",
+        "daily":               "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset",
+        "timezone":            "Australia/Melbourne",
+        "forecast_days":       8
+    }, startup_delay=10)
+
+    # Earth — Air Quality (EPA)
+    threading.Thread(target=refresh_epa, daemon=True).start()
+    threading.Thread(target=refresh_starlink_tle, daemon=True).start()
+
+    # Earth — Earthquakes Victoria (Geoscience Australia)
+    # Last 24 hours — all magnitudes
+    start("quakes_vic_day", "https://earthquake.usgs.gov/fdsnws/event/1/query", 300, params={
+        "format":    "geojson",
+        "starttime": (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S"),
+        "minlatitude":  -39.2,
+        "maxlatitude":  -33.9,
+        "minlongitude": 140.9,
+        "maxlongitude": 150.0,
+        "orderby":   "time"
+    })
+    # Last 30 days — M0.5+
+    start("quakes_vic_month", "https://earthquake.usgs.gov/fdsnws/event/1/query", 3600, params={
+        "format":    "geojson",
+        "starttime": (datetime.datetime.utcnow() - datetime.timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S"),
+        "minlatitude":  -39.2,
+        "maxlatitude":  -33.9,
+        "minlongitude": 140.9,
+        "maxlongitude": 150.0,
+        "minmagnitude": 0.5,
+        "orderby":   "time"
+    })
+
+# ---------------------------------------------------------------------------
+# Helper
+# ---------------------------------------------------------------------------
+
+def cached(key):
+    entry = cache.get(key)
+    if not entry or not entry["data"]:
+        return jsonify({"error": entry["error"] if entry else "Not yet loaded"}), 503
+    return jsonify(entry["data"])
+
+# ---------------------------------------------------------------------------
+# Page routes
+# ---------------------------------------------------------------------------
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/skywatch")
+def skywatch():
+    return render_template("skywatch.html")
+
+@app.route("/spaceweather")
+def spaceweather():
+    return render_template("spaceweather.html")
+
+@app.route("/solarsystem")
+def solarsystem():
+    return render_template("solarsystem.html")
+
+@app.route("/deepspace")
+def deepspace():
+    return render_template("deepspace.html")
+
+@app.route("/earth")
+def earth():
+    return render_template("earth.html")
+
+# ---------------------------------------------------------------------------
+# API — Sky Watch
+# ---------------------------------------------------------------------------
+
+@app.route("/api/flights")
+def api_flights():
+    return cached("flights")
+
+@app.route("/api/iss")
+def api_iss():
+    return cached("iss_pos")
+
+@app.route("/api/iss/crew")
+def api_iss_crew():
+    return cached("iss_crew")
+
+@app.route("/api/iss/passes")
+def api_iss_passes():
+    return cached("iss_passes")
+
+@app.route("/api/starlink/tle")
+def api_starlink_tle():
+    entry = cache.get("starlink_tle")
+    if not entry or not entry["data"]:
+        return "Not yet loaded", 503
+    return entry["data"], 200, {"Content-Type": "text/plain"}
+
+
+    return cached("starlink")
+
+# ---------------------------------------------------------------------------
+# API — Space Weather
+# ---------------------------------------------------------------------------
+
+@app.route("/api/spaceweather/kp")
+def api_kp():
+    return cached("kp")
+
+@app.route("/api/spaceweather/solar_wind")
+def api_solar_wind():
+    entry_p = cache.get("solar_wind_plasma")
+    entry_m = cache.get("solar_wind_mag")
+    return jsonify({
+        "plasma": entry_p["data"] if entry_p else None,
+        "mag":    entry_m["data"] if entry_m else None
+    })
+
+@app.route("/api/spaceweather/alerts")
+def api_sw_alerts():
+    return cached("sw_alerts")
+
+@app.route("/api/spaceweather/xray")
+def api_xray():
+    return cached("xray")
+
+@app.route("/api/gravwaves")
+def api_gravwaves():
+    return cached("gravwaves")
+
+@app.route("/api/sdo/<image_id>")
+def api_sdo(image_id):
+    allowed = ['0171','0304','0193','0094','HMIB']
+    if image_id not in allowed:
+        return "Not found", 404
+    url = f"https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_{image_id}.jpg"
+    try:
+        r = requests.get(url, timeout=20, headers={"User-Agent": "curl/7.88.1"})
+        r.raise_for_status()
+        from flask import Response
+        return Response(r.content, mimetype="image/jpeg",
+                        headers={"Cache-Control": "max-age=900"})
+    except Exception as e:
+        return str(e), 503
+
+# ---------------------------------------------------------------------------
+# API — Solar System
+# ---------------------------------------------------------------------------
+
+@app.route("/api/solarsystem")
+def api_solarsystem():
+    return cached("horizons")
+
+
+
+
+@app.route("/api/neo")
+def api_neo():
+    return cached("neo")
+
+@app.route("/api/fireballs")
+def api_fireballs():
+    return cached("fireballs")
+
+# ---------------------------------------------------------------------------
+# API — Deep Space
+# ---------------------------------------------------------------------------
+
+@app.route("/api/apod")
+def api_apod():
+    return cached("apod")
+
+@app.route("/api/apod/week")
+def api_apod_week():
+    return cached("apod_week")
+
+# ---------------------------------------------------------------------------
+# API — Earth
+# ---------------------------------------------------------------------------
+
+@app.route("/api/weather")
+def api_weather():
+    return cached("weather_current")
+
+@app.route("/api/epa")
+def api_epa():
+    return cached("epa_air")
+
+@app.route("/api/earthquakes/vic/day")
+def api_quakes_vic_day():
+    # Refresh starttime dynamically so it's always last 24hrs
+    try:
+        r = requests.get("https://earthquake.usgs.gov/fdsnws/event/1/query", params={
+            "format":         "geojson",
+            "starttime":      (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S"),
+            "minlatitude":    -39.2,
+            "maxlatitude":    -33.9,
+            "minlongitude":   140.9,
+            "maxlongitude":   150.0,
+            "orderby":        "time"
+        }, timeout=10)
+        return jsonify(r.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 503
+
+@app.route("/api/earthquakes/vic/month")
+def api_quakes_vic_month():
+    return cached("quakes_vic_month")
+
+@app.route("/api/owm_key")
+def api_owm_key():
+    return jsonify({"key": OWM_KEY})
+
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    init_cache()
+    app.run(host="0.0.0.0", port=5003, debug=False)

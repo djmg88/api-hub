@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Sky & Satellite Hub — API Hub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/4.1.3/satellite.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    <style>
+        :root {
+            --bg: #070b12;
+            --glass: rgba(255,255,255,0.04);
+            --glass-border: rgba(255,255,255,0.09);
+            --accent: #00d4ff;
+            --accent2: #00ff9d;
+            --accent3: #ff6b35;
+            --accent4: #c77dff;
+            --warn: #ffb703;
+            --danger: #ef233c;
+            --text: rgba(255,255,255,0.92);
+            --text-muted: rgba(255,255,255,0.55);
+            --text-dim: rgba(255,255,255,0.28);
+            --mono: 'SF Mono','Fira Code',monospace;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+        body {
+            background: var(--bg);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px 12px;
+        }
+
+        .topbar a {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            text-decoration: none;
+        }
+
+        .topbar a:hover { color: var(--text-muted); }
+
+        .topbar .title {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .section {
+            padding: 24px 20px 0;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            font-family: var(--mono);
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .section-meta {
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .pulse {
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent2);
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50% { opacity:0.4; transform:scale(1.3); }
+        }
+
+        .stat-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .stat-pill {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 10px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 100px;
+        }
+
+        .stat-pill .sp-label {
+            font-family: var(--mono);
+            font-size: 0.45rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .stat-pill .sp-value {
+            font-family: var(--mono);
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        /* Flights map — Leaflet */
+        .map-wrap {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            margin-bottom: 28px;
+            position: relative;
+        }
+
+        #flights-map { height: 500px; }
+
+        .leaflet-container { background: #e8f4f8 !important; }
+        .leaflet-popup-content-wrapper {
+            background: #0d1520;
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 0.6rem;
+        }
+        .leaflet-popup-tip { background: #0d1520; }
+        .leaflet-popup-content { margin: 10px 14px; line-height: 1.9; }
+        .leaflet-bar a { background: #fff !important; color: #333 !important; border-color: #ccc !important; }
+
+        .ac-label {
+            font-family: var(--mono);
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #fff;
+            white-space: nowrap;
+            text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000;
+        }
+
+        /* ISS D3 map */
+        .iss-map-wrap {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            margin-bottom: 14px;
+            background: #a8d5f0;
+            position: relative;
+            width: 100%;
+        }
+
+        #iss-svg {
+            width: 100%;
+            display: block;
+        }
+
+        /* ISS hover tooltip */
+        .map-tooltip {
+            position: absolute;
+            background: rgba(7,11,18,0.92);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-family: var(--mono);
+            font-size: 0.52rem;
+            color: var(--accent4);
+            pointer-events: none;
+            display: none;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        /* ISS cards */
+        .iss-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px,1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .iss-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 14px;
+        }
+
+        .iss-card .ic-label {
+            font-family: var(--mono);
+            font-size: 0.45rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+        }
+
+        .iss-card .ic-value {
+            font-family: var(--mono);
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--accent4);
+            line-height: 1;
+        }
+
+        .iss-card .ic-unit {
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            color: var(--text-dim);
+            margin-top: 3px;
+        }
+
+        /* ISS Live Cam tile */
+        .iss-cam-wrap {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+
+        .iss-cam-header {
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .iss-cam-title {
+            font-family: var(--mono);
+            font-size: 0.48rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .iss-cam-badge {
+            font-family: var(--mono);
+            font-size: 0.42rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--danger);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .iss-cam-badge::before {
+            content: '';
+            display: inline-block;
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+
+        #iss-cam {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border: none;
+            display: block;
+        }
+
+        /* Starlink */
+
+        /* Starlink */
+        .starlink-info {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .sl-stat {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            color: var(--text-dim);
+        }
+
+        .sl-stat span {
+            color: var(--accent3);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-right: 4px;
+        }
+
+        .sl-legend {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .sl-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: 0.48rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .sl-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+        .reset-btn {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            z-index: 1000;
+            font-family: var(--mono);
+            font-size: 0.48rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+            background: rgba(7,11,18,0.85);
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+        #starlink-map { height: 500px; }
+
+        .no-data {
+            font-family: var(--mono);
+            font-size: 0.55rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            padding: 20px 0;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-family: var(--mono);
+            font-size: 0.5rem;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+        }
+
+        @media (max-width: 600px) {
+            .section { padding: 16px 12px 0; }
+            #flights-map { height: 300px; }
+            #starlink-map { height: 360px; }
+            .iss-cards { grid-template-columns: repeat(2,1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <a href="/">← API Hub</a>
+    <div class="title">Sky & Satellite Hub</div>
+    <a href="http://192.168.1.108:5000">Home</a>
+</div>
+
+<!-- ============================================================ FLIGHTS -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--accent)"></span>Flights Overhead</div>
+        <div class="section-meta" id="flights-meta">Loading...</div>
+    </div>
+
+    <div class="stat-bar">
+        <div class="stat-pill">
+            <div class="sp-label">Aircraft</div>
+            <div class="sp-value" style="color:var(--accent2)" id="ac-count">--</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Highest</div>
+            <div class="sp-value" id="ac-highest">--</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Fastest</div>
+            <div class="sp-value" style="color:var(--accent3)" id="ac-fastest">--</div>
+        </div>
+        <div class="stat-pill">
+            <div class="sp-label">Countries</div>
+            <div class="sp-value" style="color:var(--accent4)" id="ac-countries">--</div>
+        </div>
+    </div>
+
+    <div class="map-wrap">
+        <div id="flights-map"></div>
+    </div>
+</div>
+
+<!-- ============================================================ ISS -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--accent4)"></span>International Space Station</div>
+        <div class="section-meta" id="iss-meta">Loading...</div>
+    </div>
+
+    <div class="iss-cards">
+        <div class="iss-card">
+            <div class="ic-label">Altitude</div>
+            <div class="ic-value">408</div>
+            <div class="ic-unit">km above Earth</div>
+        </div>
+        <div class="iss-card">
+            <div class="ic-label">Speed</div>
+            <div class="ic-value">27,600</div>
+            <div class="ic-unit">km/h orbital velocity</div>
+        </div>
+        <div class="iss-card">
+            <div class="ic-label">Latitude</div>
+            <div class="ic-value" id="iss-lat" style="font-size:0.9rem">--</div>
+            <div class="ic-unit">degrees</div>
+        </div>
+        <div class="iss-card">
+            <div class="ic-label">Longitude</div>
+            <div class="ic-value" id="iss-lon" style="font-size:0.9rem">--</div>
+            <div class="ic-unit">degrees</div>
+        </div>
+        <div class="iss-card">
+            <div class="ic-label">Day/Night</div>
+            <div class="ic-value" id="iss-daynight" style="font-size:0.85rem">--</div>
+            <div class="ic-unit">current condition</div>
+        </div>
+    </div>
+
+    <!-- D3 World Map -->
+    <div class="iss-map-wrap" id="iss-map-wrap">
+        <svg id="iss-svg"></svg>
+        <div class="map-tooltip" id="iss-tooltip"></div>
+    </div>
+
+</div>
+
+<!-- ============================================================ STARLINK -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-title"><span class="pulse" style="background:var(--accent3)"></span>Starlink Fleet</div>
+        <div class="section-meta" id="starlink-meta">Loading TLE data...</div>
+    </div>
+
+    <div class="starlink-info">
+        <div class="sl-stat"><span id="sl-count">--</span> satellites in region</div>
+        <div class="sl-stat"><span id="sl-visible">--</span> visible from Mooroolbark</div>
+        <div class="sl-stat" style="color:var(--text-dim);font-size:0.45rem">Positions update every 5s · Click for trajectory</div>
+    </div>
+
+    <div class="sl-legend">
+        <div class="sl-legend-item"><div class="sl-dot" style="background:#ff6b35"></div>Visible (el &gt;10°)</div>
+        <div class="sl-legend-item"><div class="sl-dot" style="background:#ffb703"></div>Closest satellite</div>
+        <div class="sl-legend-item"><div class="sl-dot" style="background:rgba(199,125,255,0.7)"></div>In region</div>
+        <div class="sl-legend-item"><div class="sl-dot" style="background:#00ff9d"></div>Mooroolbark</div>
+    </div>
+
+    <div class="map-wrap">
+        <div id="starlink-map"></div>
+        <button class="reset-btn" onclick="resetStarlinkView()">Reset View</button>
+    </div>
+</div>
+
+<div class="footer">192.168.1.108 · Sky Watch · Flights 30s · ISS 30s · Starlink 5s</div>
+
+<script>
+const OBS_LAT = -37.7939;
+const OBS_LON = 145.3214;
+
+// ============================================================
+// FLIGHTS MAP — CartoDB Voyager tiles
+// ============================================================
+const flightsMap = L.map('flights-map', {
+    center: [-37.8, 145.3],
+    zoom: 7,
+    zoomControl: true,
+    attributionControl: false
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom: 13, noWrap: true
+}).addTo(flightsMap);
+
+L.circleMarker([OBS_LAT, OBS_LON], {
+    radius: 6, color: '#00ff9d', fillColor: '#00ff9d', fillOpacity: 0.9, weight: 2
+}).addTo(flightsMap).bindPopup('<b>Mooroolbark</b>');
+
+let acArrowMarkers = {}, acLabelMarkers = {};
+
+function getHeadingArrow(heading) {
+    // Top-down aircraft silhouette, rotated to heading
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+        <g transform="rotate(${heading},18,18)">
+            <path d="M18 2 C19 2 20 8 20 18 C20 25 19.2 32 18 34 C16.8 32 16 25 16 18 C16 8 17 2 18 2 Z"
+                fill="#00d4ff" stroke="rgba(0,40,70,0.7)" stroke-width="0.6"/>
+            <path d="M18 13 L1 23 L4 24.5 L18 19 L32 24.5 L35 23 Z"
+                fill="#00d4ff" fill-opacity="0.88" stroke="rgba(0,40,70,0.4)" stroke-width="0.4"/>
+            <path d="M18 28 L11 34 L13.5 34 L18 31 L22.5 34 L25 34 Z"
+                fill="#00d4ff" fill-opacity="0.8"/>
+        </g>
+    </svg>`;
+    return L.divIcon({ html: svg, className: '', iconSize: [32,32], iconAnchor: [16,16] });
+}
+
+function updateFlights() {
+    fetch('/api/flights')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error || !data.states) return;
+            document.getElementById('flights-meta').textContent =
+                'Updated ' + new Date().toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+
+            const airborne = data.states.filter(s => !s[8] && s[5] && s[6]);
+            document.getElementById('ac-count').textContent = airborne.length;
+
+            if (airborne.length > 0) {
+                const alts   = airborne.map(s=>s[7]||0).filter(a=>a>0);
+                const speeds = airborne.map(s=>s[9]||0).filter(v=>v>0);
+                const ctries = [...new Set(airborne.map(s=>s[2]).filter(Boolean))];
+                document.getElementById('ac-highest').textContent  = alts.length   ? Math.round(Math.max(...alts)).toLocaleString()+'m' : '--';
+                document.getElementById('ac-fastest').textContent  = speeds.length ? Math.round(Math.max(...speeds)*3.6).toLocaleString()+' km/h' : '--';
+                document.getElementById('ac-countries').textContent = ctries.length;
+            }
+
+            const seen = new Set();
+            airborne.forEach(s => {
+                const icao=s[0], call=(s[1]||'').trim()||icao;
+                const lon=s[5], lat=s[6];
+                const alt=s[7]?Math.round(s[7])+'m':'N/A';
+                const spd=s[9]?Math.round(s[9]*3.6)+' km/h':'N/A';
+                const hdg=s[10]||0, cty=s[2]||'Unknown';
+                seen.add(icao);
+                const popup=`<b>${call}</b><br>Alt: ${alt}<br>Speed: ${spd}<br>Heading: ${Math.round(hdg)}°<br>Origin: ${cty}`;
+                if (acArrowMarkers[icao]) {
+                    acArrowMarkers[icao].setLatLng([lat,lon]);
+                    acArrowMarkers[icao].setIcon(getHeadingArrow(hdg));
+                    acArrowMarkers[icao].getPopup().setContent(popup);
+                    acLabelMarkers[icao].setLatLng([lat,lon]);
+                } else {
+                    acArrowMarkers[icao] = L.marker([lat,lon],{icon:getHeadingArrow(hdg)}).addTo(flightsMap).bindPopup(popup);
+                    acLabelMarkers[icao] = L.marker([lat,lon],{icon:L.divIcon({html:`<div class="ac-label">${call}</div>`,className:'',iconAnchor:[-14,8]})}).addTo(flightsMap);
+                }
+            });
+            Object.keys(acArrowMarkers).forEach(icao => {
+                if (!seen.has(icao)) {
+                    flightsMap.removeLayer(acArrowMarkers[icao]);
+                    flightsMap.removeLayer(acLabelMarkers[icao]);
+                    delete acArrowMarkers[icao];
+                    delete acLabelMarkers[icao];
+                }
+            });
+        }).catch(()=>{});
+}
+
+// ============================================================
+// ISS D3 WORLD MAP
+// ============================================================
+let issWorldData = null;
+let issCurrentLat = 0, issCurrentLon = 0;
+let issProjection, issPathGen, issSvgEl, issWidth, issHeight;
+
+function initISSMap() {
+    const wrap = document.getElementById('iss-map-wrap');
+    issWidth   = wrap.clientWidth;
+    issHeight  = Math.round(issWidth * 0.5);
+
+    const svg = d3.select('#iss-svg')
+        .attr('viewBox', `0 0 ${issWidth} ${issHeight}`)
+        .attr('preserveAspectRatio', 'xMidYMid meet')
+        .style('height', issHeight + 'px');
+
+    issProjection = d3.geoEquirectangular()
+        .scale(issWidth / (2 * Math.PI))
+        .translate([issWidth / 2, issHeight / 2]);
+
+    issPathGen = d3.geoPath().projection(issProjection);
+    issSvgEl   = svg;
+
+    // Ocean background
+    svg.append('rect')
+        .attr('width', issWidth)
+        .attr('height', issHeight)
+        .attr('fill', '#a8d5f0');
+
+    // Load world topology
+    d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+        .then(world => {
+            issWorldData = world;
+
+            // Land
+            svg.append('g').attr('class','land')
+                .selectAll('path')
+                .data(topojson.feature(world, world.objects.countries).features)
+                .join('path')
+                .attr('d', issPathGen)
+                .attr('fill', '#e8e0d0')
+                .attr('stroke', '#c8bba8')
+                .attr('stroke-width', 0.4);
+
+            // Graticule grid
+            svg.append('path')
+                .datum(d3.geoGraticule()())
+                .attr('d', issPathGen)
+                .attr('fill', 'none')
+                .attr('stroke', 'rgba(0,0,0,0.06)')
+                .attr('stroke-width', 0.5);
+
+            // Equator
+            svg.append('path')
+                .datum({type:'LineString', coordinates: d3.range(-180,181,1).map(d=>[d,0])})
+                .attr('d', issPathGen)
+                .attr('fill', 'none')
+                .attr('stroke', '#00d4ff')
+                .attr('stroke-width', 0.8)
+                .attr('stroke-dasharray', '4,6')
+                .attr('opacity', 0.4);
+
+            // Night overlay group (drawn before ISS)
+            svg.append('g').attr('id','night-overlay');
+
+            // Ground track group
+            svg.append('g').attr('id','iss-track');
+
+            // Mooroolbark
+            const [mx, my] = issProjection([OBS_LON, OBS_LAT]);
+            svg.append('circle')
+                .attr('cx', mx).attr('cy', my)
+                .attr('r', 7)
+                .attr('fill', '#00ff9d')
+                .attr('stroke', '#003322')
+                .attr('stroke-width', 1.5);
+
+            // ISS dot
+            svg.append('circle').attr('id','iss-dot')
+                .attr('r', 10)
+                .attr('fill', '#c77dff')
+                .attr('stroke', '#7a3db5')
+                .attr('stroke-width', 2);
+
+            // ISS halo
+            svg.append('circle').attr('id','iss-halo')
+                .attr('r', 18)
+                .attr('fill', 'none')
+                .attr('stroke', '#c77dff')
+                .attr('stroke-width', 1.5)
+                .attr('opacity', 0.5);
+
+            // Hover group — appended LAST so it's on top of everything
+            svg.append('g').attr('id','iss-hover');
+
+            drawISSMap(issCurrentLat, issCurrentLon);
+        });
+}
+
+// Subsolar point calculation for day/night terminator
+function getSubsolarPoint(date) {
+    const JD    = date / 86400000 + 2440587.5;
+    const n     = JD - 2451545.0;
+    const L     = (280.460 + 0.9856474 * n) % 360;
+    const g     = ((357.528 + 0.9856003 * n) % 360) * Math.PI / 180;
+    const lam   = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2*g)) * Math.PI / 180;
+    const eps   = (23.439 - 0.0000004 * n) * Math.PI / 180;
+    const sinDec = Math.sin(eps) * Math.sin(lam);
+    const dec   = Math.asin(sinDec) * 180 / Math.PI;
+    const RA    = Math.atan2(Math.cos(eps)*Math.sin(lam), Math.cos(lam));
+    const GMST  = (18.697375 + 24.065709824279 * (JD - 2451545)) % 24;
+    const lon   = (RA * 180/Math.PI - GMST * 15 + 360) % 360;
+    return { lat: dec, lon: lon > 180 ? lon - 360 : lon };
+}
+
+function drawNightOverlay(subsolar) {
+    const g = d3.select('#night-overlay');
+    g.selectAll('*').remove();
+
+    // Generate terminator — night side polygon wrapping around anti-solar pole
+    const points = [];
+    const sLat = subsolar.lat * Math.PI / 180;
+    const sLon = subsolar.lon * Math.PI / 180;
+
+    // Terminator ring: 90° great circle from subsolar point
+    for (let az = 0; az <= 360; az += 1) {
+        const azR = az * Math.PI / 180;
+        const tLat = Math.asin(
+            Math.sin(sLat) * Math.cos(Math.PI/2) +
+            Math.cos(sLat) * Math.sin(Math.PI/2) * Math.cos(azR)
+        );
+        const dLon = Math.atan2(
+            Math.sin(azR) * Math.sin(Math.PI/2) * Math.cos(sLat),
+            Math.cos(Math.PI/2) - Math.sin(sLat) * Math.sin(tLat)
+        );
+        const tLon = ((sLon + dLon) * 180/Math.PI + 540) % 360 - 180;
+        points.push([tLon, tLat * 180/Math.PI]);
+    }
+
+    // Reverse winding so D3 fills the night side (outside = night)
+    points.reverse();
+
+    const antiLon = subsolar.lon > 0 ? subsolar.lon - 180 : subsolar.lon + 180;
+
+    try {
+        // Draw terminator line (golden)
+        g.append('path')
+            .datum({ type: 'LineString', coordinates: [...points].reverse() })
+            .attr('d', issPathGen)
+            .attr('fill', 'none')
+            .attr('stroke', 'rgba(255,160,30,0.9)')
+            .attr('stroke-width', 2);
+
+        // Fill night side
+        g.append('path')
+            .datum({ type: 'Polygon', coordinates: [points] })
+            .attr('d', issPathGen)
+            .attr('fill', 'rgba(30,30,80,0.38)')
+            .attr('stroke', 'none');
+    } catch(e) {}
+}
+
+function generateISSTrack(lat, lon) {
+    const period = 92.68, inc = 51.6, degPerMin = 360 / period;
+    const trackPoints = [];
+    for (let i = 0; i <= 120; i++) {
+        const t      = (i / 120) * period;
+        const newLon = lon + degPerMin * t;
+        const phase  = (t / period) * 2 * Math.PI;
+        const clamp  = Math.max(-1, Math.min(1, lat / inc));
+        const newLat = inc * Math.sin(phase + Math.asin(clamp));
+        trackPoints.push({
+            lat: newLat,
+            lon: ((newLon + 180) % 360) - 180,
+            minutesAhead: t
+        });
+    }
+    return trackPoints;
+}
+
+function splitTrackAtAntimeridian(points) {
+    const segs = [];
+    let cur    = [points[0]];
+    for (let i = 1; i < points.length; i++) {
+        if (Math.abs(points[i].lon - points[i-1].lon) > 180) {
+            if (cur.length > 1) segs.push(cur);
+            cur = [points[i]];
+        } else {
+            cur.push(points[i]);
+        }
+    }
+    if (cur.length > 1) segs.push(cur);
+    return segs;
+}
+
+function drawISSMap(lat, lon) {
+    if (!issWorldData) return;
+
+    // Night overlay
+    const subsolar = getSubsolarPoint(Date.now());
+    drawNightOverlay(subsolar);
+
+    // Check if ISS is in day or night — angle from subsolar point
+    const issSubsolarDist = Math.acos(
+        Math.max(-1, Math.min(1,
+            Math.sin(subsolar.lat*Math.PI/180) * Math.sin(lat*Math.PI/180) +
+            Math.cos(subsolar.lat*Math.PI/180) * Math.cos(lat*Math.PI/180) *
+            Math.cos((lon - subsolar.lon)*Math.PI/180)
+        ))
+    ) * 180 / Math.PI;
+    // ISS is in daylight when within 90° of subsolar point
+    const inDaylight = issSubsolarDist < 90;
+    document.getElementById('iss-daynight').textContent = inDaylight ? 'Daylight' : 'Orbital Night';
+    document.getElementById('iss-daynight').style.color = inDaylight ? '#ffb703' : '#c77dff';
+
+    // Ground track
+    const trackGroup = d3.select('#iss-track');
+    trackGroup.selectAll('*').remove();
+    d3.select('#iss-hover').selectAll('*').remove();
+
+    const trackPoints = generateISSTrack(lat, lon);
+    const segments    = splitTrackAtAntimeridian(trackPoints);
+
+    segments.forEach(seg => {
+        const lineData = {
+            type: 'LineString',
+            coordinates: seg.map(p => [p.lon, p.lat])
+        };
+        try {
+            // Visible dashed track
+            trackGroup.append('path')
+                .datum(lineData)
+                .attr('d', issPathGen)
+                .attr('fill', 'none')
+                .attr('stroke', '#c77dff')
+                .attr('stroke-width', 3)
+                .attr('stroke-dasharray', '6,5')
+                .attr('opacity', 0.85)
+                .attr('pointer-events', 'none');
+
+            // Wide invisible hover target in TOP-LEVEL hover group
+            const hoverGroup = d3.select('#iss-hover');
+            const pathEl = hoverGroup.append('path')
+                .datum(lineData)
+                .attr('d', issPathGen)
+                .attr('fill', 'none')
+                .attr('stroke', 'rgba(0,0,0,0.001)')
+                .attr('stroke-width', 24)
+                .style('cursor', 'crosshair');
+
+            const segNode  = pathEl.node();
+            const tooltip  = document.getElementById('iss-tooltip');
+            const mapWrap  = document.getElementById('iss-map-wrap');
+
+            segNode.addEventListener('mousemove', function(e) {
+                const rect   = mapWrap.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                let bestDist = Infinity, bestPt = null;
+                seg.forEach(pt => {
+                    const [px, py] = issProjection([pt.lon, pt.lat]);
+                    const d = Math.hypot(px - mouseX, py - mouseY);
+                    if (d < bestDist) { bestDist = d; bestPt = pt; }
+                });
+
+                if (bestPt) {
+                    const mins   = Math.round(bestPt.minutesAhead);
+                    const eta    = new Date(Date.now() + mins * 60000);
+                    const aedtD  = new Date(eta.getTime() + 11 * 3600 * 1000);
+                    const hh     = String(aedtD.getUTCHours()).padStart(2,'0');
+                    const mm     = String(aedtD.getUTCMinutes()).padStart(2,'0');
+                    tooltip.style.display = 'block';
+                    tooltip.style.left    = (mouseX + 14) + 'px';
+                    tooltip.style.top     = (mouseY - 12) + 'px';
+                    tooltip.textContent   = mins === 0 ? 'ISS is here now' : `ISS here in ~${mins}min (${hh}:${mm} AEDT)`;
+                }
+            });
+
+            segNode.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+        } catch(e) {}
+    });
+
+    // Move ISS dot
+    const [ix, iy] = issProjection([lon, lat]);
+    issSvgEl.select('#iss-dot').attr('cx', ix).attr('cy', iy);
+    issSvgEl.select('#iss-halo').attr('cx', ix).attr('cy', iy);
+}
+
+
+function updateISS() {
+    fetch('/api/iss')
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) return;
+            const lat = parseFloat(data.iss_position.latitude);
+            const lon = parseFloat(data.iss_position.longitude);
+            issCurrentLat = lat;
+            issCurrentLon = lon;
+
+            document.getElementById('iss-lat').textContent  = lat.toFixed(2) + '°';
+            document.getElementById('iss-lon').textContent  = lon.toFixed(2) + '°';
+            document.getElementById('iss-meta').textContent =
+                `${Math.abs(lat).toFixed(1)}° ${lat>=0?'N':'S'}, ${Math.abs(lon).toFixed(1)}° ${lon>=0?'E':'W'} · Updates every 30s`;
+
+            drawISSMap(lat, lon);
+        }).catch(()=>{});
+}
+
+
+// ============================================================
+// STARLINK — Leaflet Aus/NZ/Indo region, fixed propagation
+// ============================================================
+const SL_CENTER = [-25, 140];
+const SL_ZOOM   = 4;
+
+const slMap = L.map('starlink-map', {
+    center: SL_CENTER,
+    zoom:   SL_ZOOM,
+    zoomControl: true,
+    attributionControl: false
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom: 8, noWrap: true
+}).addTo(slMap);
+
+L.circleMarker([OBS_LAT, OBS_LON], {
+    radius: 6, color: '#00ff9d', fillColor: '#00ff9d', fillOpacity: 1, weight: 2
+}).addTo(slMap).bindPopup('<b>Mooroolbark</b>');
+
+function resetStarlinkView() { slMap.setView(SL_CENTER, SL_ZOOM); }
+
+const SL_BOUNDS = { minLat: -55, maxLat: 15, minLon: 100, maxLon: 185 };
+let slSatrecs = [], slNames = [], slLoaded = false;
+let slMarkers = [], slTrajectoryLines = [];
+
+function elevationAngle(obsLat, obsLon, satLat, satLon, satAltKm) {
+    const R=6371, dLat=(satLat-obsLat)*Math.PI/180, dLon=(satLon-obsLon)*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+Math.cos(obsLat*Math.PI/180)*Math.cos(satLat*Math.PI/180)*Math.sin(dLon/2)**2;
+    const dist=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    return Math.atan2(satAltKm, dist)*180/Math.PI;
+}
+
+function haversineKm(lat1,lon1,lat2,lon2) {
+    const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function drawSLTrajectory(satrec) {
+    slTrajectoryLines.forEach(l => slMap.removeLayer(l));
+    slTrajectoryLines = [];
+    const now = new Date();
+    const points = [];
+    for (let m = 0; m <= 90; m++) {
+        const t = new Date(now.getTime() + m*60000);
+        try {
+            const pv = satellite.propagate(satrec, t);
+            if (!pv.position) continue;
+            const geo = satellite.eciToGeodetic(pv.position, satellite.gstime(t));
+            const lat = satellite.degreesLat(geo.latitude);
+            const lon = satellite.degreesLong(geo.longitude);
+            if (!isNaN(lat) && !isNaN(lon)) points.push([lat,lon]);
+        } catch(e) {}
+    }
+    // Split at antimeridian
+    let cur = points.length ? [points[0]] : [];
+    const segs = [];
+    for (let i=1;i<points.length;i++) {
+        if (Math.abs(points[i][1]-points[i-1][1])>180) {
+            if (cur.length>1) segs.push(cur);
+            cur=[points[i]];
+        } else cur.push(points[i]);
+    }
+    if (cur.length>1) segs.push(cur);
+    segs.forEach(seg => {
+        const l = L.polyline(seg,{color:'#ffb703',weight:3,opacity:0.85,dashArray:'5,5'}).addTo(slMap);
+        slTrajectoryLines.push(l);
+    });
+}
+
+function parseTLE(text) {
+    const lines = text.trim().split('\n').map(l=>l.trim()).filter(l=>l);
+    const sats=[],names=[];
+    for (let i=0;i<lines.length-2;i+=3) {
+        const name=lines[i].replace(/^0 /,'').trim();
+        const l1=lines[i+1],l2=lines[i+2];
+        if (l1.startsWith('1')&&l2.startsWith('2')) {
+            try { sats.push(satellite.twoline2satrec(l1,l2)); names.push(name); } catch(e) {}
+        }
+    }
+    return {sats,names};
+}
+
+function propagateStarlink() {
+    if (!slLoaded || slSatrecs.length===0) return;
+    const now=new Date(), gmst=satellite.gstime(now);
+    slMarkers.forEach(m=>slMap.removeLayer(m));
+    slMarkers=[];
+
+    let visCount=0, closestDist=Infinity, closestI=-1;
+    const inRegion=[];
+
+    for (let i=0;i<slSatrecs.length;i++) {
+        try {
+            const pv=satellite.propagate(slSatrecs[i],now);
+            if (!pv.position) continue;
+            const geo=satellite.eciToGeodetic(pv.position,gmst);
+            const lat=satellite.degreesLat(geo.latitude);
+            const lon=satellite.degreesLong(geo.longitude);
+            const alt=geo.height;
+            if (isNaN(lat)||isNaN(lon)) continue;
+            if (lat<SL_BOUNDS.minLat||lat>SL_BOUNDS.maxLat||lon<SL_BOUNDS.minLon||lon>SL_BOUNDS.maxLon) continue;
+            inRegion.push({i,lat,lon,alt});
+        } catch(e) {}
+    }
+
+    // Find closest first
+    inRegion.forEach(({i,lat,lon}) => {
+        const d=haversineKm(OBS_LAT,OBS_LON,lat,lon);
+        if (d<closestDist){closestDist=d;closestI=i;}
+    });
+
+    inRegion.forEach(({i,lat,lon,alt}) => {
+        const elev=elevationAngle(OBS_LAT,OBS_LON,lat,lon,alt);
+        const visible=elev>10;
+        if (visible) visCount++;
+        const isClosest=(i===closestI);
+        const color=isClosest?'#ffb703':visible?'#ff6b35':'rgba(199,125,255,0.8)';
+        const radius=isClosest?9:visible?6:4;
+        const idx=i;
+        const m=L.circleMarker([lat,lon],{
+            radius,color,fillColor:color,
+            fillOpacity:visible?0.9:0.5,weight:0
+        }).addTo(slMap)
+          .bindPopup(`<b>${slNames[i]}</b><br>Alt: ${alt.toFixed(0)}km<br>Elevation: ${elev.toFixed(1)}°<br>${lat.toFixed(1)}°, ${lon.toFixed(1)}°`)
+          .on('click',()=>drawSLTrajectory(slSatrecs[idx]));
+        slMarkers.push(m);
+    });
+
+    document.getElementById('sl-count').textContent   = inRegion.length;
+    document.getElementById('sl-visible').textContent = visCount;
+}
+
+function loadStarlinkTLE() {
+    document.getElementById('starlink-meta').textContent = 'Fetching TLE data...';
+    fetch('/api/starlink/tle')
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+        .then(text => {
+            if (!text||text.length<100) throw new Error('Empty');
+            const {sats,names}=parseTLE(text);
+            if (sats.length===0) throw new Error('No sats');
+            slSatrecs=sats; slNames=names; slLoaded=true;
+            document.getElementById('starlink-meta').textContent=
+                `${sats.length} satellites loaded · Aus/NZ/Indo region · Updates every 5s`;
+            propagateStarlink();
+        })
+        .catch(()=>{
+            document.getElementById('starlink-meta').textContent='TLE data loading... retrying in 30s';
+            setTimeout(loadStarlinkTLE,30000);
+        });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+// Init D3 map after DOM is ready
+window.addEventListener('load', () => {
+    initISSMap();
+    updateISS();
+});
+
+updateFlights();
+loadStarlinkTLE();
+
+setInterval(updateFlights,     30000);
+setInterval(updateISS,         30000);
+setInterval(propagateStarlink,  5000);
+setInterval(loadStarlinkTLE, 21600000);
+
+// Redraw ISS map on resize
+window.addEventListener('resize', () => {
+    if (issWorldData) {
+        d3.select('#iss-svg').selectAll('*').remove();
+        initISSMap();
+        drawISSMap(issCurrentLat, issCurrentLon);
+    }
+});
+</script>
+</body>
+</html>
