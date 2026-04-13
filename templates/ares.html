@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ares · Maritime Tactical</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #070b12;
+    --accent: #00d4ff;
+    --accent2: #00ff9d;
+    --accent3: #ff6b35;
+    --danger: #ef233c;
+    --text: rgba(255,255,255,0.92);
+    --text-muted: rgba(255,255,255,0.45);
+    --text-dim: rgba(255,255,255,0.22);
+    --mono: 'SF Mono','Fira Code',monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); font-family: var(--mono); color: var(--text); overflow: hidden; }
+
+  #map { position: fixed; inset: 0; z-index: 1; }
+
+  /* ── HUD layer ─────────────────────────────────── */
+  #hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+
+  /* Scanlines */
+  #hud::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.025) 2px, rgba(0,0,0,0.025) 4px);
+    pointer-events: none;
+  }
+
+  /* Corner brackets */
+  .corner { position: absolute; width: 26px; height: 26px; }
+  .corner.tl { top:12px; left:12px;  border-top:1.5px solid rgba(0,212,255,.55); border-left:1.5px solid rgba(0,212,255,.55); }
+  .corner.tr { top:12px; right:12px; border-top:1.5px solid rgba(0,212,255,.55); border-right:1.5px solid rgba(0,212,255,.55); }
+  .corner.bl { bottom:12px; left:12px;  border-bottom:1.5px solid rgba(0,212,255,.55); border-left:1.5px solid rgba(0,212,255,.55); }
+  .corner.br { bottom:12px; right:12px; border-bottom:1.5px solid rgba(0,212,255,.55); border-right:1.5px solid rgba(0,212,255,.55); }
+
+  /* Top bar */
+  #topbar {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 48px;
+    background: linear-gradient(to bottom, rgba(7,11,18,.85) 0%, transparent 100%);
+    font-size: .55rem; letter-spacing: 2px; text-transform: uppercase;
+  }
+  #topbar .title   { color: rgba(0,212,255,.9); letter-spacing: 5px; }
+  #topbar .coords  { color: var(--text-dim); }
+  #topbar .updated { color: var(--text-dim); }
+
+  /* Stats panel */
+  #stats {
+    position: absolute; top: 44px; right: 16px;
+    background: rgba(7,11,18,.78);
+    border: 1px solid rgba(0,212,255,.12);
+    border-radius: 8px; padding: 10px 14px; min-width: 116px;
+  }
+  .stat { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 5px; font-size: .45rem; letter-spacing: 1.5px; text-transform: uppercase; }
+  .stat:last-child { margin-bottom: 0; }
+  .stat .lbl  { color: var(--text-dim); }
+  .stat .cyan    { color: var(--accent); }
+  .stat .orange  { color: var(--accent3); }
+  .stat .green   { color: var(--accent2); }
+  .stat .red     { color: var(--danger); }
+  .stat .white   { color: var(--text-muted); }
+
+  /* Bottom bar */
+  #bottombar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 48px;
+    background: linear-gradient(to top, rgba(7,11,18,.75) 0%, transparent 100%);
+    font-size: .42rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim);
+  }
+
+  /* Back link — re-enable pointer-events */
+  #back {
+    position: absolute; top: 10px; left: 48px;
+    font-size: .48rem; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-dim); text-decoration: none; pointer-events: all;
+    padding: 3px 6px; transition: color .2s;
+  }
+  #back:hover { color: rgba(0,212,255,.8); }
+
+  /* ── Leaflet overrides ────────────────────────── */
+  .leaflet-popup-content-wrapper {
+    background: rgba(7,11,18,.93) !important;
+    border: 1px solid rgba(0,212,255,.28) !important;
+    border-radius: 6px !important; color: var(--text) !important;
+    font-family: var(--mono) !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,.65) !important;
+  }
+  .leaflet-popup-tip { background: rgba(7,11,18,.93) !important; }
+  .leaflet-popup-content { margin: 10px 14px !important; font-size: 11px !important; line-height: 1.9 !important; }
+  .leaflet-control-zoom a { background: rgba(7,11,18,.82) !important; color: rgba(0,212,255,.7) !important; border-color: rgba(0,212,255,.18) !important; }
+  .leaflet-control-attribution { background: rgba(7,11,18,.6) !important; color: rgba(255,255,255,.2) !important; font-size: 9px !important; }
+  .leaflet-control-attribution a { color: rgba(255,255,255,.3) !important; }
+
+  /* Ship popup */
+  .pop-name  { font-size: 12px; font-weight: bold; color: var(--accent); letter-spacing: 1px; margin-bottom: 7px; }
+  .pop-row   { display: flex; justify-content: space-between; gap: 20px; font-size: 10px; margin-bottom: 1px; }
+  .pop-key   { color: rgba(255,255,255,.3); text-transform: uppercase; letter-spacing: 1px; font-size: 9px; }
+  .pop-val   { color: var(--text); }
+  .pop-badge { display:inline-block; background:rgba(239,35,60,.18); border:1px solid rgba(239,35,60,.45); color:var(--danger); font-size:8px; padding:1px 7px; border-radius:3px; letter-spacing:1.5px; margin-top:7px; }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="hud">
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <div id="topbar">
+    <div class="title">Ares · Maritime Tactical</div>
+    <div class="coords">26°32'N · 56°15'E · STRAIT OF HORMUZ</div>
+    <div class="updated" id="updated-ts">—</div>
+  </div>
+
+  <div id="stats">
+    <div class="stat"><span class="lbl">Active</span>  <span id="cnt-active"  class="cyan">—</span></div>
+    <div class="stat"><span class="lbl">Tanker</span>  <span id="cnt-tanker"  class="orange">—</span></div>
+    <div class="stat"><span class="lbl">Cargo</span>   <span id="cnt-cargo"   class="green">—</span></div>
+    <div class="stat"><span class="lbl">Military</span><span id="cnt-military" class="red">—</span></div>
+    <div class="stat"><span class="lbl">Other</span>   <span id="cnt-other"   class="white">—</span></div>
+  </div>
+
+  <div id="bottombar">
+    <span>AIS · aisstream.io</span>
+    <span>API Hub · Port 5003</span>
+    <span>30s refresh</span>
+  </div>
+
+  <a id="back" href="/">← Hub</a>
+</div>
+
+<script>
+const map = L.map('map', { zoomControl: true, attributionControl: true })
+              .setView([26.2, 56.8], 8);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://carto.com">CartoDB</a>',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+let markerLayer = L.layerGroup().addTo(map);
+
+function shipColor(type) {
+  if (!type) return 'rgba(255,255,255,0.55)';
+  const t = type.toLowerCase();
+  if (t === 'tanker')    return '#ff6b35';
+  if (t === 'cargo')     return '#00ff9d';
+  if (t === 'military')  return '#ef233c';
+  if (t === 'passenger') return '#c77dff';
+  return 'rgba(255,255,255,0.55)';
+}
+
+function makeArrow(color, headingDeg) {
+  const h   = (headingDeg == null) ? 0 : headingDeg;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+    <g transform="rotate(${h}, 8, 8)">
+      <polygon points="8,1 11,13 8,10 5,13" fill="${color}" stroke="rgba(0,0,0,0.45)" stroke-width="0.6"/>
+      <circle cx="8" cy="8" r="2" fill="${color}" opacity="0.75"/>
+    </g>
+  </svg>`;
+  return L.divIcon({ html: svg, iconSize: [16, 16], iconAnchor: [8, 8], className: '' });
+}
+
+function formatSpeed(s) {
+  return (s != null) ? s + ' kn' : 'N/A';
+}
+
+function formatHeading(h) {
+  return (h != null) ? h + '°' : 'N/A';
+}
+
+function buildPopup(ship) {
+  const militaryBadge = ship.military
+    ? '<div><span class="pop-badge">MILITARY</span></div>'
+    : '';
+  return `
+    <div class="pop-name">${ship.name || ship.mmsi}</div>
+    <div class="pop-row"><span class="pop-key">Type</span>    <span class="pop-val">${ship.type    || 'Unknown'}</span></div>
+    <div class="pop-row"><span class="pop-key">Flag</span>    <span class="pop-val">${ship.country || 'Unknown'}</span></div>
+    <div class="pop-row"><span class="pop-key">Speed</span>   <span class="pop-val">${formatSpeed(ship.speed)}</span></div>
+    <div class="pop-row"><span class="pop-key">Heading</span> <span class="pop-val">${formatHeading(ship.heading)}</span></div>
+    ${militaryBadge}
+  `;
+}
+
+function updateHUD(ships) {
+  const counts = { tanker: 0, cargo: 0, military: 0, other: 0 };
+  ships.forEach(s => {
+    const t = (s.type || '').toLowerCase();
+    if (t === 'tanker')        counts.tanker++;
+    else if (t === 'cargo')    counts.cargo++;
+    else if (t === 'military') counts.military++;
+    else                       counts.other++;
+  });
+  document.getElementById('cnt-active').textContent   = ships.length;
+  document.getElementById('cnt-tanker').textContent   = counts.tanker;
+  document.getElementById('cnt-cargo').textContent    = counts.cargo;
+  document.getElementById('cnt-military').textContent = counts.military;
+  document.getElementById('cnt-other').textContent    = counts.other;
+
+  const now  = new Date();
+  const hh   = String(now.getHours()).padStart(2, '0');
+  const mm   = String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('updated-ts').textContent = `Updated ${hh}:${mm}`;
+}
+
+function drawShips(ships) {
+  markerLayer.clearLayers();
+  ships.forEach(ship => {
+    if (ship.lat == null || ship.lon == null) return;
+    const color  = ship.military ? '#ef233c' : shipColor(ship.type);
+    const marker = L.marker([ship.lat, ship.lon], {
+      icon: makeArrow(color, ship.heading)
+    });
+    marker.bindPopup(buildPopup(ship), { maxWidth: 230 });
+    markerLayer.addLayer(marker);
+  });
+}
+
+function fetchAndDraw() {
+  fetch('/api/ares/ships')
+    .then(r => r.json())
+    .then(data => {
+      drawShips(data.ships || []);
+      updateHUD(data.ships || []);
+    })
+    .catch(e => console.error('[Ares] fetch error:', e));
+}
+
+fetchAndDraw();
+setInterval(fetchAndDraw, 30000);
+</script>
+
+</body>
+</html>
