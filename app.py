@@ -341,13 +341,16 @@ def _ares_handle_message(ws, raw):
                 pr      = data.get("Message", {}).get("PositionReport", {})
                 heading = pr.get("TrueHeading")
                 if heading is None or heading == 511:   # 511 = not available in AIS spec
-                    heading = pr.get("Cog")
+                    cog = pr.get("Cog")
+                    heading = cog if (cog is not None and cog != 360.0) else None
                 speed = pr.get("SpeedOverGround")
                 if speed == 102.3:                       # 102.3 = not available in AIS spec
                     speed = None
+                lat = pr.get("Latitude")
+                lon = pr.get("Longitude")
                 ares_ships[mmsi].update({
-                    "lat":       pr.get("Latitude"),
-                    "lon":       pr.get("Longitude"),
+                    "lat":       lat if (lat is not None and lat != 91.0) else None,
+                    "lon":       lon if (lon is not None and lon != 181.0) else None,
                     "speed":     round(speed, 1) if speed is not None else None,
                     "heading":   int(heading) if heading is not None else None,
                     "last_seen": time.time(),
@@ -394,10 +397,10 @@ def _run_ares():
             ws.run_forever(ping_interval=30, ping_timeout=10)
         except Exception as e:
             print(f"[Ares] Connection error: {e}")
-        print("[Ares] Reconnecting in 5s...")
-        time.sleep(5)
         with ares_lock:
             prune_stale_ships(ares_ships)
+        print("[Ares] Reconnecting in 5s...")
+        time.sleep(5)
 
 
 def init_cache():
