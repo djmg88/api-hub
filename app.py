@@ -27,7 +27,7 @@ OBS_ELEV = 119
 # Ares — AIS constants
 # ---------------------------------------------------------------------------
 
-AISSTREAM_KEY = "5c533a95345123d3262c69abce911ef76c13e3ed"
+AISSTREAM_KEY = "f2544a3031b5f0b310381437e8ebc5f7c8589ff7"
 ARES_BOUNDS   = [[[23.0, 55.0], [27.5, 61.0]]]  # Strait of Hormuz bounding box
 
 _SHIP_TYPE_RANGES = [
