@@ -662,7 +662,22 @@ def api_quakes_vic_month():
 def api_owm_key():
     return jsonify({"key": OWM_KEY})
 
+
 # ---------------------------------------------------------------------------
+# Ares — Routes
+# ---------------------------------------------------------------------------
+
+@app.route("/ares")
+def page_ares():
+    return render_template("ares.html")
+
+
+@app.route("/api/ares/ships")
+def api_ares_ships():
+    with ares_lock:
+        ships = [s for s in ares_ships.values() if s.get("lat") is not None and s.get("lon") is not None]
+    return jsonify({"ships": ships, "count": len(ships), "ts": time.time(), "error": None})
+
 
 if __name__ == "__main__":
     init_cache()
