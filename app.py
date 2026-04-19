@@ -385,6 +385,7 @@ def _ares_on_open(ws):
 
 
 def _run_ares():
+    delay = 30  # start cautious after the 429
     while True:
         try:
             ws = websocket.WebSocketApp(
@@ -395,12 +396,14 @@ def _run_ares():
                 on_close   = lambda ws, c, m: print(f"[Ares] WS closed: {c}"),
             )
             ws.run_forever(ping_interval=30, ping_timeout=10)
+            delay = 30  # reset on clean disconnect
         except Exception as e:
             print(f"[Ares] Connection error: {e}")
         with ares_lock:
             prune_stale_ships(ares_ships)
-        print("[Ares] Reconnecting in 5s...")
-        time.sleep(5)
+        print(f"[Ares] Reconnecting in {delay}s...")
+        time.sleep(delay)
+        delay = min(delay * 2, 3600)  # cap at 1 hour
 
 
 def init_cache():
