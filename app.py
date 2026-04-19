@@ -44,7 +44,8 @@ COPERNICUS_INSTANCE_ID   = "sh-5f8b630b-b083-49ed-b340-b8f01ecb81c4"
 SAR_ZONES = [
     [47.0, 24.0, 54.5, 29.5],   # Western Persian Gulf (Kuwait → Qatar)
     [53.5, 23.5, 61.5, 28.5],   # Central Gulf + Strait of Hormuz
-    [56.5, 19.0, 65.0, 26.0],   # Gulf of Oman
+    [56.0, 21.0, 61.5, 26.5],   # Gulf of Oman west (Strait exit + Muscat approaches)
+    [60.5, 19.0, 65.5, 24.5],   # Gulf of Oman east
 ]
 SAR_WIDTH         = 1024
 SAR_HEIGHT        = 512
