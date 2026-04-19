@@ -3,32 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
     <title>Earth — API Hub</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <style>
         :root {
-            --bg: #070b12;
-            --glass: rgba(255,255,255,0.04);
-            --glass-border: rgba(255,255,255,0.09);
-            --accent: #00d4ff;
-            --accent2: #00ff9d;
-            --accent3: #ff6b35;
-            --accent4: #c77dff;
-            --warn: #ffb703;
-            --danger: #ef233c;
-            --text: rgba(255,255,255,0.92);
-            --text-muted: rgba(255,255,255,0.55);
-            --text-dim: rgba(255,255,255,0.28);
-            --mono: 'SF Mono','Fira Code',monospace;
-        }
+  --bg:          #18181b;
+  --surface:     #232327;
+  --surface-hi:  #2d2d32;
+  --border:      rgba(255,255,255,0.07);
+  --border-hi:   rgba(255,255,255,0.13);
+
+  --red:    #c8313a;
+  --amber:  #f0b429;
+  --blue:   #3b9eff;
+  --green:  #22c55e;
+  --orange: #f97316;
+  --cyan:   #22d3ee;
+  --purple: #a855f7;
+  --rose:   #f43f5e;
+
+  --text:       rgba(255,255,255,0.92);
+  --text-muted: rgba(255,255,255,0.55);
+  --text-dim:   rgba(255,255,255,0.28);
+
+  --sans: 'Outfit', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             background: var(--bg);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: var(--sans);
             color: var(--text);
             min-height: 100vh;
             overflow-x: hidden;
@@ -93,7 +103,7 @@
             display: inline-block;
             width: 6px; height: 6px;
             border-radius: 50%;
-            background: var(--accent);
+            background: var(--cyan);
             margin-right: 6px;
             animation: pulse 2s infinite;
         }
@@ -112,8 +122,8 @@
         }
 
         .stat-pill {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 12px 14px;
             cursor: default;
@@ -144,8 +154,8 @@
 
         /* --- Correlation chart --- */
         .chart-wrap {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 28px;
@@ -165,7 +175,7 @@
             text-transform: uppercase;
             padding: 5px 12px;
             border-radius: 6px;
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--border);
             background: transparent;
             cursor: pointer;
             transition: all 0.2s;
@@ -194,8 +204,8 @@
             grid-template-columns: 160px 1fr;
             gap: 20px;
             align-items: center;
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 20px 24px;
             margin-bottom: 10px;
@@ -239,7 +249,7 @@
 
         .aqi-param {
             background: rgba(255,255,255,0.03);
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 10px 12px;
         }
@@ -317,14 +327,14 @@
         @media (max-width: 400px) { .stargaze-grid { grid-template-columns: repeat(3,1fr); } }
 
         .stargaze-night {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 12px 8px;
             text-align: center;
         }
 
-        .stargaze-night.clear  { border-color: rgba(0,255,157,0.4); background: rgba(0,255,157,0.05); }
+        .stargaze-night.clear  { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.05); }
         .stargaze-night.partial { border-color: rgba(255,183,3,0.3); background: rgba(255,183,3,0.04); }
 
         .sn-day {
@@ -355,19 +365,19 @@
             text-transform: uppercase;
             padding: 5px 12px;
             border-radius: 6px;
-            border: 1px solid var(--glass-border);
-            background: var(--glass);
+            border: 1px solid var(--border);
+            background: var(--surface);
             color: var(--text-dim);
             cursor: pointer;
             transition: all 0.2s;
         }
 
-        .map-toggle.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,0.08); }
+        .map-toggle.active { border-color: var(--cyan); color: var(--cyan); background: rgba(34,211,238,0.08); }
 
         .map-wrap {
             border-radius: 12px;
             overflow: hidden;
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--border);
             margin-bottom: 28px;
         }
 
@@ -400,7 +410,7 @@
         }
         .leaflet-popup-content-wrapper {
             background: #0d1520;
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--border);
             border-radius: 8px;
             color: var(--text);
             font-family: var(--mono);
@@ -408,7 +418,7 @@
         }
         .leaflet-popup-tip { background: #0d1520; }
         .leaflet-popup-content { margin: 10px 14px; line-height: 1.9; }
-        .leaflet-bar a { background: #0d1520 !important; color: var(--text-muted) !important; border-color: var(--glass-border) !important; }
+        .leaflet-bar a { background: #0d1520 !important; color: var(--text-muted) !important; border-color: var(--border) !important; }
 
         /* --- Hourly forecast --- */
         .hourly-scroll {
@@ -418,13 +428,13 @@
             padding-bottom: 8px;
             margin-bottom: 28px;
             scrollbar-width: thin;
-            scrollbar-color: var(--glass-border) transparent;
+            scrollbar-color: var(--border) transparent;
         }
 
         .hourly-item {
             flex-shrink: 0;
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 10px 12px;
             text-align: center;
@@ -432,14 +442,14 @@
         }
 
         .hi-time  { font-family: var(--mono); font-size: 0.45rem; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 6px; }
-        .hi-temp  { font-family: var(--mono); font-size: 0.85rem; font-weight: 600; color: var(--accent3); margin-bottom: 4px; }
+        .hi-temp  { font-family: var(--mono); font-size: 0.85rem; font-weight: 600; color: var(--orange); margin-bottom: 4px; }
         .hi-rain  { font-family: var(--mono); font-size: 0.48rem; }
         .hi-cloud { font-family: var(--mono); font-size: 0.45rem; color: var(--text-dim); margin-top: 2px; }
 
         /* --- Quake log --- */
         .quake-log {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             overflow: hidden;
             margin-bottom: 40px;
@@ -450,7 +460,7 @@
             grid-template-columns: 70px 1fr 140px 70px;
             gap: 10px;
             padding: 10px 16px;
-            border-bottom: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--border);
             font-family: var(--mono);
             font-size: 0.42rem;
             letter-spacing: 2px;
@@ -529,32 +539,32 @@
     <div class="stat-bar">
         <div class="stat-pill">
             <div class="sp-label">Temperature</div>
-            <div class="sp-value" id="w-temp" style="color:#ff6b35">--</div>
+            <div class="sp-value" id="w-temp" style="color:#f97316">--</div>
             <div class="sp-unit">°C</div>
         </div>
         <div class="stat-pill">
             <div class="sp-label">Humidity</div>
-            <div class="sp-value" id="w-hum" style="color:#00d4ff">--</div>
+            <div class="sp-value" id="w-hum" style="color:#22d3ee">--</div>
             <div class="sp-unit">%</div>
         </div>
         <div class="stat-pill">
             <div class="sp-label">Wind</div>
-            <div class="sp-value" id="w-wind" style="color:#00ff9d">--</div>
+            <div class="sp-value" id="w-wind" style="color:#22c55e">--</div>
             <div class="sp-unit" id="w-wind-dir">km/h</div>
         </div>
         <div class="stat-pill">
             <div class="sp-label">Gusts</div>
-            <div class="sp-value" id="w-gusts" style="color:#00ff9d">--</div>
+            <div class="sp-value" id="w-gusts" style="color:#22c55e">--</div>
             <div class="sp-unit">km/h</div>
         </div>
         <div class="stat-pill">
             <div class="sp-label">UV Index</div>
-            <div class="sp-value" id="w-uv" style="color:#ffb703">--</div>
+            <div class="sp-value" id="w-uv" style="color:#f0b429">--</div>
             <div class="sp-unit" id="w-uv-label">--</div>
         </div>
         <div class="stat-pill">
             <div class="sp-label">Pressure</div>
-            <div class="sp-value" id="w-pres" style="color:#c77dff">--</div>
+            <div class="sp-value" id="w-pres" style="color:#a855f7">--</div>
             <div class="sp-unit">hPa</div>
         </div>
         <div class="stat-pill">
@@ -583,7 +593,7 @@
 <!-- ============================================================ AIR QUALITY -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--accent2)"></span>Air Quality — Mooroolbark</div>
+        <div class="section-title"><span class="pulse" style="background:var(--green)"></span>Air Quality — Mooroolbark</div>
         <div class="section-meta" id="aqi-meta">EPA Victoria · Live</div>
     </div>
 
@@ -603,13 +613,13 @@
 <!-- ============================================================ STARGAZING -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--accent4)"></span>Stargazing Forecast</div>
+        <div class="section-title"><span class="pulse" style="background:var(--purple)"></span>Stargazing Forecast</div>
         <div class="section-meta">Next 7 nights · Mooroolbark</div>
     </div>
 
     <div class="stargaze-legend">
-        <div class="sg-legend-item"><div class="sg-dot" style="background:var(--accent2)"></div>Clear (&lt;20%)</div>
-        <div class="sg-legend-item"><div class="sg-dot" style="background:var(--warn)"></div>Partial (20–60%)</div>
+        <div class="sg-legend-item"><div class="sg-dot" style="background:var(--green)"></div>Clear (&lt;20%)</div>
+        <div class="sg-legend-item"><div class="sg-dot" style="background:var(--amber)"></div>Partial (20–60%)</div>
         <div class="sg-legend-item"><div class="sg-dot" style="background:rgba(255,255,255,0.2)"></div>Cloudy (&gt;60%)</div>
     </div>
 
@@ -653,29 +663,29 @@
 <!-- ============================================================ EARTHQUAKES -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--accent3)"></span>Victorian Earthquakes</div>
+        <div class="section-title"><span class="pulse" style="background:var(--orange)"></span>Victorian Earthquakes</div>
         <div class="section-meta" id="quake-meta">Last 24 hours</div>
     </div>
 
     <div class="stat-bar-quake">
         <div class="stat-pill">
             <div class="sp-label">Last 24hrs</div>
-            <div class="sp-value" id="q-day-count" style="color:var(--accent3)">--</div>
+            <div class="sp-value" id="q-day-count" style="color:var(--orange)">--</div>
             <div class="sp-unit">events</div>
         </div>
         <div class="stat-pill">
             <div class="sp-label">Largest (24hr)</div>
-            <div class="sp-value" id="q-day-max" style="color:var(--danger)">--</div>
+            <div class="sp-value" id="q-day-max" style="color:var(--red)">--</div>
             <div class="sp-unit">magnitude</div>
         </div>
         <div class="stat-pill">
             <div class="sp-label">Last 30 days</div>
-            <div class="sp-value" id="q-month-count" style="color:var(--accent3)">--</div>
+            <div class="sp-value" id="q-month-count" style="color:var(--orange)">--</div>
             <div class="sp-unit">events</div>
         </div>
         <div class="stat-pill">
             <div class="sp-label">Largest (30d)</div>
-            <div class="sp-value" id="q-month-max" style="color:var(--danger)">--</div>
+            <div class="sp-value" id="q-month-max" style="color:var(--red)">--</div>
             <div class="sp-unit">magnitude</div>
         </div>
     </div>
@@ -709,11 +719,11 @@
 // Colors match the stat card colours above
 // ============================================================
 const METRICS = [
-    { key: 'temperature_2m',           label: 'Temperature',  color: '#ff6b35', unit: '°C'  },
-    { key: 'relative_humidity_2m',     label: 'Humidity',     color: '#00d4ff', unit: '%'   },
-    { key: 'wind_speed_10m',           label: 'Wind',         color: '#00ff9d', unit: 'km/h'},
-    { key: 'uv_index',                 label: 'UV Index',     color: '#ffb703', unit: ''    },
-    { key: 'surface_pressure',         label: 'Pressure',     color: '#c77dff', unit: 'hPa' },
+    { key: 'temperature_2m',           label: 'Temperature',  color: '#f97316', unit: '°C'  },
+    { key: 'relative_humidity_2m',     label: 'Humidity',     color: '#22d3ee', unit: '%'   },
+    { key: 'wind_speed_10m',           label: 'Wind',         color: '#22c55e', unit: 'km/h'},
+    { key: 'uv_index',                 label: 'UV Index',     color: '#f0b429', unit: ''    },
+    { key: 'surface_pressure',         label: 'Pressure',     color: '#a855f7', unit: 'hPa' },
     { key: 'visibility',               label: 'Visibility',   color: 'rgba(255,255,255,0.55)', unit: 'km' },
 ];
 
@@ -739,12 +749,12 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 }).addTo(weatherMap);
 
 L.circleMarker([-37.7939, 145.3214], {
-    radius: 6, color: '#00ff9d', fillColor: '#00ff9d',
+    radius: 6, color: '#22c55e', fillColor: '#22c55e',
     fillOpacity: 0.9, weight: 2
 }).addTo(weatherMap).bindPopup('<b>Mooroolbark</b>');
 
 const LAYER_LEGENDS = {
-    wind:          [['#ffffff','Calm'],['#a0e4ff','Light'],['#00d4ff','Moderate'],['#0080ff','Strong'],['#ff6b35','Gale']],
+    wind:          [['#ffffff','Calm'],['#a0e4ff','Light'],['#22d3ee','Moderate'],['#0080ff','Strong'],['#f97316','Gale']],
     clouds:        [['#ffffff','Clear'],['#d0e8f0','Few'],['#a0c4d8','Scattered'],['#6899b0','Broken'],['#3a6070','Overcast']],
     precipitation: [['#ffffff','Dry'],['#a0d4ff','Light'],['#4499ff','Moderate'],['#0044cc','Heavy'],['#6600cc','Intense']],
     pressure:      [['#ff4444','Low'],['#ff9900','Below avg'],['#ffff00','Average'],['#99ff00','Above avg'],['#00cc44','High']],
@@ -898,7 +908,7 @@ function rebuildChart(d) {
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'rgba(7,11,18,0.95)',
+                    backgroundColor: 'rgba(24,24,27,0.95)',
                     borderColor: 'rgba(255,255,255,0.09)',
                     borderWidth: 1,
                     titleColor: 'rgba(255,255,255,0.55)',
@@ -991,7 +1001,7 @@ function updateWeather() {
                 item.innerHTML = `
                     <div class="hi-time">${hour}</div>
                     <div class="hi-temp">${temp}°</div>
-                    <div class="hi-rain" style="color:${rain > 50 ? 'var(--accent)' : 'var(--text-dim)'}">${rain}% rain</div>
+                    <div class="hi-rain" style="color:${rain > 50 ? 'var(--cyan)' : 'var(--text-dim)'}">${rain}% rain</div>
                     <div class="hi-cloud">${cloud}% cloud</div>`;
                 strip.appendChild(item);
             }
@@ -1047,8 +1057,8 @@ function buildStargazing(d) {
         }
 
         let cls = 'stargaze-night', color = 'var(--text-dim)', label = 'Cloudy';
-        if (avgCloud < 20)      { cls += ' clear';   color = 'var(--accent2)'; label = 'Clear'; }
-        else if (avgCloud < 60) { cls += ' partial'; color = 'var(--warn)';    label = 'Partial'; }
+        if (avgCloud < 20)      { cls += ' clear';   color = 'var(--green)'; label = 'Clear'; }
+        else if (avgCloud < 60) { cls += ' partial'; color = 'var(--amber)';    label = 'Partial'; }
 
         const el = document.createElement('div');
         el.className = cls;
@@ -1085,7 +1095,7 @@ function updateAirQuality() {
                 const r0 = apiParam.timeSeriesReadings?.[0]?.readings?.[0];
                 if (r0) {
                     document.getElementById('aqi-number').textContent   = r0.averageValue.toFixed(2);
-                    document.getElementById('aqi-number').style.color   = advice?.healthAdviceColor || '#00ff9d';
+                    document.getElementById('aqi-number').style.color   = advice?.healthAdviceColor || '#22c55e';
                 }
             }
 
@@ -1132,19 +1142,19 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(quakeMap);
 
 L.rectangle([[-39.2, 140.9], [-33.9, 150.0]], {
-    color: 'rgba(0,212,255,0.2)', weight: 1, fill: false, dashArray: '4,6'
+    color: 'rgba(34,211,238,0.2)', weight: 1, fill: false, dashArray: '4,6'
 }).addTo(quakeMap);
 
 L.circleMarker([-37.7939, 145.3214], {
-    radius: 5, color: '#00ff9d', fillColor: '#00ff9d', fillOpacity: 0.9, weight: 2
+    radius: 5, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.9, weight: 2
 }).addTo(quakeMap).bindPopup('<b>Mooroolbark</b>');
 
 function magColor(mag) {
-    if (mag < 1.0) return '#00d4ff';
-    if (mag < 2.0) return '#00ff9d';
-    if (mag < 3.0) return '#ffb703';
-    if (mag < 4.0) return '#ff6b35';
-    return '#ef233c';
+    if (mag < 1.0) return '#22d3ee';
+    if (mag < 2.0) return '#22c55e';
+    if (mag < 3.0) return '#f0b429';
+    if (mag < 4.0) return '#f97316';
+    return '#c8313a';
 }
 
 let dayMarkers = [];

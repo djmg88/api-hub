@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
     <title>Sky & Satellite Hub — API Hub</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -11,26 +13,34 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
     <style>
         :root {
-            --bg: #070b12;
-            --glass: rgba(255,255,255,0.04);
-            --glass-border: rgba(255,255,255,0.09);
-            --accent: #00d4ff;
-            --accent2: #00ff9d;
-            --accent3: #ff6b35;
-            --accent4: #c77dff;
-            --warn: #ffb703;
-            --danger: #ef233c;
-            --text: rgba(255,255,255,0.92);
-            --text-muted: rgba(255,255,255,0.55);
-            --text-dim: rgba(255,255,255,0.28);
-            --mono: 'SF Mono','Fira Code',monospace;
-        }
+  --bg:          #18181b;
+  --surface:     #232327;
+  --surface-hi:  #2d2d32;
+  --border:      rgba(255,255,255,0.07);
+  --border-hi:   rgba(255,255,255,0.13);
+
+  --red:    #c8313a;
+  --amber:  #f0b429;
+  --blue:   #3b9eff;
+  --green:  #22c55e;
+  --orange: #f97316;
+  --cyan:   #22d3ee;
+  --purple: #a855f7;
+  --rose:   #f43f5e;
+
+  --text:       rgba(255,255,255,0.92);
+  --text-muted: rgba(255,255,255,0.55);
+  --text-dim:   rgba(255,255,255,0.28);
+
+  --sans: 'Outfit', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
 
         * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
         body {
             background: var(--bg);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: var(--sans);
             color: var(--text);
             min-height: 100vh;
             overflow-x: hidden;
@@ -95,7 +105,7 @@
             display: inline-block;
             width: 6px; height: 6px;
             border-radius: 50%;
-            background: var(--accent2);
+            background: var(--green);
             margin-right: 6px;
             animation: pulse 2s infinite;
         }
@@ -113,8 +123,8 @@
         }
 
         .stat-pill {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 10px 16px;
             display: flex;
@@ -135,7 +145,7 @@
             font-family: var(--mono);
             font-size: 1.1rem;
             font-weight: 600;
-            color: var(--accent);
+            color: var(--cyan);
             line-height: 1;
         }
 
@@ -143,7 +153,7 @@
         .map-wrap {
             border-radius: 12px;
             overflow: hidden;
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--border);
             margin-bottom: 28px;
             position: relative;
         }
@@ -153,7 +163,7 @@
         .leaflet-container { background: #e8f4f8 !important; }
         .leaflet-popup-content-wrapper {
             background: #0d1520;
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--border);
             border-radius: 8px;
             color: var(--text);
             font-family: var(--mono);
@@ -178,7 +188,7 @@
         .iss-map-wrap {
             border-radius: 12px;
             overflow: hidden;
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--border);
             margin-bottom: 14px;
             background: #a8d5f0;
             position: relative;
@@ -193,13 +203,13 @@
         /* ISS hover tooltip */
         .map-tooltip {
             position: absolute;
-            background: rgba(7,11,18,0.92);
-            border: 1px solid var(--glass-border);
+            background: rgba(24,24,27,0.92);
+            border: 1px solid var(--border);
             border-radius: 6px;
             padding: 6px 10px;
             font-family: var(--mono);
             font-size: 0.52rem;
-            color: var(--accent4);
+            color: var(--purple);
             pointer-events: none;
             display: none;
             white-space: nowrap;
@@ -215,8 +225,8 @@
         }
 
         .iss-card {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 14px;
         }
@@ -234,7 +244,7 @@
             font-family: var(--mono);
             font-size: 1.2rem;
             font-weight: 600;
-            color: var(--accent4);
+            color: var(--purple);
             line-height: 1;
         }
 
@@ -247,8 +257,8 @@
 
         /* ISS Live Cam tile */
         .iss-cam-wrap {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 10px;
             overflow: hidden;
             margin-bottom: 14px;
@@ -259,7 +269,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--border);
         }
 
         .iss-cam-title {
@@ -275,7 +285,7 @@
             font-size: 0.42rem;
             letter-spacing: 1px;
             text-transform: uppercase;
-            color: var(--danger);
+            color: var(--red);
             display: flex;
             align-items: center;
             gap: 4px;
@@ -286,7 +296,7 @@
             display: inline-block;
             width: 5px; height: 5px;
             border-radius: 50%;
-            background: var(--danger);
+            background: var(--red);
             animation: pulse 1.5s infinite;
         }
 
@@ -301,8 +311,8 @@
 
         /* Starlink */
         .starlink-info {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 10px;
             padding: 12px 16px;
             margin-bottom: 14px;
@@ -319,7 +329,7 @@
         }
 
         .sl-stat span {
-            color: var(--accent3);
+            color: var(--orange);
             font-weight: 600;
             font-size: 0.9rem;
             margin-right: 4px;
@@ -356,14 +366,14 @@
             text-transform: uppercase;
             padding: 6px 12px;
             border-radius: 6px;
-            border: 1px solid var(--glass-border);
-            background: rgba(7,11,18,0.85);
+            border: 1px solid var(--border);
+            background: rgba(24,24,27,0.85);
             color: var(--text-dim);
             cursor: pointer;
             transition: all 0.2s;
         }
 
-        .reset-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+        .reset-btn:hover { border-color: var(--orange); color: var(--orange); }
 
         #starlink-map { height: 500px; }
 
@@ -405,14 +415,14 @@
 <!-- ============================================================ FLIGHTS -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--accent)"></span>Flights Overhead</div>
+        <div class="section-title"><span class="pulse" style="background:var(--cyan)"></span>Flights Overhead</div>
         <div class="section-meta" id="flights-meta">Loading...</div>
     </div>
 
     <div class="stat-bar">
         <div class="stat-pill">
             <div class="sp-label">Aircraft</div>
-            <div class="sp-value" style="color:var(--accent2)" id="ac-count">--</div>
+            <div class="sp-value" style="color:var(--green)" id="ac-count">--</div>
         </div>
         <div class="stat-pill">
             <div class="sp-label">Highest</div>
@@ -420,11 +430,11 @@
         </div>
         <div class="stat-pill">
             <div class="sp-label">Fastest</div>
-            <div class="sp-value" style="color:var(--accent3)" id="ac-fastest">--</div>
+            <div class="sp-value" style="color:var(--orange)" id="ac-fastest">--</div>
         </div>
         <div class="stat-pill">
             <div class="sp-label">Countries</div>
-            <div class="sp-value" style="color:var(--accent4)" id="ac-countries">--</div>
+            <div class="sp-value" style="color:var(--purple)" id="ac-countries">--</div>
         </div>
     </div>
 
@@ -436,7 +446,7 @@
 <!-- ============================================================ ISS -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--accent4)"></span>International Space Station</div>
+        <div class="section-title"><span class="pulse" style="background:var(--purple)"></span>International Space Station</div>
         <div class="section-meta" id="iss-meta">Loading...</div>
     </div>
 
@@ -479,7 +489,7 @@
 <!-- ============================================================ STARLINK -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--accent3)"></span>Starlink Fleet</div>
+        <div class="section-title"><span class="pulse" style="background:var(--orange)"></span>Starlink Fleet</div>
         <div class="section-meta" id="starlink-meta">Loading TLE data...</div>
     </div>
 
@@ -490,10 +500,10 @@
     </div>
 
     <div class="sl-legend">
-        <div class="sl-legend-item"><div class="sl-dot" style="background:#ff6b35"></div>Visible (el &gt;10°)</div>
-        <div class="sl-legend-item"><div class="sl-dot" style="background:#ffb703"></div>Closest satellite</div>
-        <div class="sl-legend-item"><div class="sl-dot" style="background:rgba(199,125,255,0.7)"></div>In region</div>
-        <div class="sl-legend-item"><div class="sl-dot" style="background:#00ff9d"></div>Mooroolbark</div>
+        <div class="sl-legend-item"><div class="sl-dot" style="background:#f97316"></div>Visible (el &gt;10°)</div>
+        <div class="sl-legend-item"><div class="sl-dot" style="background:#f0b429"></div>Closest satellite</div>
+        <div class="sl-legend-item"><div class="sl-dot" style="background:rgba(168,85,247,0.7)"></div>In region</div>
+        <div class="sl-legend-item"><div class="sl-dot" style="background:#22c55e"></div>Mooroolbark</div>
     </div>
 
     <div class="map-wrap">
@@ -523,7 +533,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 }).addTo(flightsMap);
 
 L.circleMarker([OBS_LAT, OBS_LON], {
-    radius: 6, color: '#00ff9d', fillColor: '#00ff9d', fillOpacity: 0.9, weight: 2
+    radius: 6, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.9, weight: 2
 }).addTo(flightsMap).bindPopup('<b>Mooroolbark</b>');
 
 let acArrowMarkers = {}, acLabelMarkers = {};
@@ -533,11 +543,11 @@ function getHeadingArrow(heading) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
         <g transform="rotate(${heading},18,18)">
             <path d="M18 2 C19 2 20 8 20 18 C20 25 19.2 32 18 34 C16.8 32 16 25 16 18 C16 8 17 2 18 2 Z"
-                fill="#00d4ff" stroke="rgba(0,40,70,0.7)" stroke-width="0.6"/>
+                fill="#22d3ee" stroke="rgba(0,40,70,0.7)" stroke-width="0.6"/>
             <path d="M18 13 L1 23 L4 24.5 L18 19 L32 24.5 L35 23 Z"
-                fill="#00d4ff" fill-opacity="0.88" stroke="rgba(0,40,70,0.4)" stroke-width="0.4"/>
+                fill="#22d3ee" fill-opacity="0.88" stroke="rgba(0,40,70,0.4)" stroke-width="0.4"/>
             <path d="M18 28 L11 34 L13.5 34 L18 31 L22.5 34 L25 34 Z"
-                fill="#00d4ff" fill-opacity="0.8"/>
+                fill="#22d3ee" fill-opacity="0.8"/>
         </g>
     </svg>`;
     return L.divIcon({ html: svg, className: '', iconSize: [32,32], iconAnchor: [16,16] });
@@ -651,7 +661,7 @@ function initISSMap() {
                 .datum({type:'LineString', coordinates: d3.range(-180,181,1).map(d=>[d,0])})
                 .attr('d', issPathGen)
                 .attr('fill', 'none')
-                .attr('stroke', '#00d4ff')
+                .attr('stroke', '#22d3ee')
                 .attr('stroke-width', 0.8)
                 .attr('stroke-dasharray', '4,6')
                 .attr('opacity', 0.4);
@@ -667,14 +677,14 @@ function initISSMap() {
             svg.append('circle')
                 .attr('cx', mx).attr('cy', my)
                 .attr('r', 7)
-                .attr('fill', '#00ff9d')
+                .attr('fill', '#22c55e')
                 .attr('stroke', '#003322')
                 .attr('stroke-width', 1.5);
 
             // ISS dot
             svg.append('circle').attr('id','iss-dot')
                 .attr('r', 10)
-                .attr('fill', '#c77dff')
+                .attr('fill', '#a855f7')
                 .attr('stroke', '#7a3db5')
                 .attr('stroke-width', 2);
 
@@ -682,7 +692,7 @@ function initISSMap() {
             svg.append('circle').attr('id','iss-halo')
                 .attr('r', 18)
                 .attr('fill', 'none')
-                .attr('stroke', '#c77dff')
+                .attr('stroke', '#a855f7')
                 .attr('stroke-width', 1.5)
                 .attr('opacity', 0.5);
 
@@ -807,7 +817,7 @@ function drawISSMap(lat, lon) {
     // ISS is in daylight when within 90° of subsolar point
     const inDaylight = issSubsolarDist < 90;
     document.getElementById('iss-daynight').textContent = inDaylight ? 'Daylight' : 'Orbital Night';
-    document.getElementById('iss-daynight').style.color = inDaylight ? '#ffb703' : '#c77dff';
+    document.getElementById('iss-daynight').style.color = inDaylight ? '#f0b429' : '#a855f7';
 
     // Ground track
     const trackGroup = d3.select('#iss-track');
@@ -828,7 +838,7 @@ function drawISSMap(lat, lon) {
                 .datum(lineData)
                 .attr('d', issPathGen)
                 .attr('fill', 'none')
-                .attr('stroke', '#c77dff')
+                .attr('stroke', '#a855f7')
                 .attr('stroke-width', 3)
                 .attr('stroke-dasharray', '6,5')
                 .attr('opacity', 0.85)
@@ -922,7 +932,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 }).addTo(slMap);
 
 L.circleMarker([OBS_LAT, OBS_LON], {
-    radius: 6, color: '#00ff9d', fillColor: '#00ff9d', fillOpacity: 1, weight: 2
+    radius: 6, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 1, weight: 2
 }).addTo(slMap).bindPopup('<b>Mooroolbark</b>');
 
 function resetStarlinkView() { slMap.setView(SL_CENTER, SL_ZOOM); }
@@ -971,7 +981,7 @@ function drawSLTrajectory(satrec) {
     }
     if (cur.length>1) segs.push(cur);
     segs.forEach(seg => {
-        const l = L.polyline(seg,{color:'#ffb703',weight:3,opacity:0.85,dashArray:'5,5'}).addTo(slMap);
+        const l = L.polyline(seg,{color:'#f0b429',weight:3,opacity:0.85,dashArray:'5,5'}).addTo(slMap);
         slTrajectoryLines.push(l);
     });
 }
@@ -1023,7 +1033,7 @@ function propagateStarlink() {
         const visible=elev>10;
         if (visible) visCount++;
         const isClosest=(i===closestI);
-        const color=isClosest?'#ffb703':visible?'#ff6b35':'rgba(199,125,255,0.8)';
+        const color=isClosest?'#f0b429':visible?'#f97316':'rgba(168,85,247,0.8)';
         const radius=isClosest?9:visible?6:4;
         const idx=i;
         const m=L.circleMarker([lat,lon],{

@@ -3,30 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
     <title>Solar & Gravity Hub — API Hub</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <style>
         :root {
-            --bg: #070b12;
-            --glass: rgba(255,255,255,0.04);
-            --glass-border: rgba(255,255,255,0.09);
-            --accent: #00d4ff;
-            --accent2: #00ff9d;
-            --accent3: #ff6b35;
-            --accent4: #c77dff;
-            --warn: #ffb703;
-            --danger: #ef233c;
-            --text: rgba(255,255,255,0.92);
-            --text-muted: rgba(255,255,255,0.55);
-            --text-dim: rgba(255,255,255,0.28);
-            --mono: 'SF Mono','Fira Code',monospace;
-        }
+  --bg:          #18181b;
+  --surface:     #232327;
+  --surface-hi:  #2d2d32;
+  --border:      rgba(255,255,255,0.07);
+  --border-hi:   rgba(255,255,255,0.13);
+
+  --red:    #c8313a;
+  --amber:  #f0b429;
+  --blue:   #3b9eff;
+  --green:  #22c55e;
+  --orange: #f97316;
+  --cyan:   #22d3ee;
+  --purple: #a855f7;
+  --rose:   #f43f5e;
+
+  --text:       rgba(255,255,255,0.92);
+  --text-muted: rgba(255,255,255,0.55);
+  --text-dim:   rgba(255,255,255,0.28);
+
+  --sans: 'Outfit', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
 
         * { margin:0; padding:0; box-sizing:border-box; }
 
         body {
             background: var(--bg);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: var(--sans);
             color: var(--text);
             min-height: 100vh;
             overflow-x: hidden;
@@ -102,8 +112,8 @@
 
         /* ---- BIG STATUS BAR ---- */
         .status-bar {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 14px;
             padding: 24px 28px;
             display: flex;
@@ -160,7 +170,7 @@
 
         .status-pill {
             background: rgba(255,255,255,0.03);
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 10px 14px;
             text-align: center;
@@ -194,7 +204,7 @@
 
         .sdo-card {
             background: #000;
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--border);
             border-radius: 12px;
             overflow: hidden;
             position: relative;
@@ -239,8 +249,8 @@
         @media (max-width: 700px) { .kp-section { grid-template-columns: 1fr; } }
 
         .kp-gauge-wrap {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 20px;
             text-align: center;
@@ -249,8 +259,8 @@
         #kp-gauge { width: 100%; max-width: 240px; }
 
         .kp-chart-wrap {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 20px;
         }
@@ -276,8 +286,8 @@
 
         /* ---- AURORA ---- */
         .aurora-wrap {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             overflow: hidden;
             margin-bottom: 28px;
@@ -351,7 +361,7 @@
             padding: 3px 8px;
             border-radius: 4px;
             background: rgba(255,255,255,0.04);
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--border);
             color: var(--text-dim);
         }
 
@@ -371,16 +381,16 @@
         @media (max-width: 700px) { .chart-grid { grid-template-columns: 1fr; } }
 
         .chart-card {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 18px 20px;
         }
 
         /* ---- ALERTS ---- */
         .alerts-wrap {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 18px 20px;
             margin-bottom: 28px;
@@ -406,7 +416,7 @@
         }
 
         .alert-item .alert-title {
-            color: var(--warn);
+            color: var(--amber);
             font-size: 0.6rem;
             font-weight: 600;
             margin-bottom: 3px;
@@ -414,8 +424,8 @@
 
         /* ---- GRAVITATIONAL WAVES ---- */
         .gw-status {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 20px 24px;
             margin-bottom: 16px;
@@ -452,22 +462,22 @@
         }
 
         .gw-card {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 16px 18px;
         }
 
         .gw-card.active-event {
-            border-color: rgba(239,35,60,0.5);
-            background: rgba(239,35,60,0.05);
+            border-color: rgba(200,49,58,0.5);
+            background: rgba(200,49,58,0.05);
         }
 
         .gw-card .gc-id {
             font-family: var(--mono);
             font-size: 0.85rem;
             font-weight: 600;
-            color: var(--accent4);
+            color: var(--purple);
             margin-bottom: 8px;
         }
 
@@ -483,7 +493,7 @@
             font-family: var(--mono);
             font-size: 1.1rem;
             font-weight: 600;
-            color: var(--accent);
+            color: var(--cyan);
             margin-bottom: 2px;
         }
 
@@ -514,9 +524,9 @@
             margin-top: 6px;
         }
 
-        .gc-status.confirmed { background: rgba(0,255,157,0.1); color: var(--accent2); border: 1px solid rgba(0,255,157,0.2); }
-        .gc-status.retracted { background: rgba(255,255,255,0.04); color: var(--text-dim); border: 1px solid var(--glass-border); }
-        .gc-status.preliminary { background: rgba(255,183,3,0.1); color: var(--warn); border: 1px solid rgba(255,183,3,0.2); }
+        .gc-status.confirmed { background: rgba(34,197,94,0.1); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+        .gc-status.retracted { background: rgba(255,255,255,0.04); color: var(--text-dim); border: 1px solid var(--border); }
+        .gc-status.preliminary { background: rgba(255,183,3,0.1); color: var(--amber); border: 1px solid rgba(255,183,3,0.2); }
 
         .no-data {
             font-family: var(--mono);
@@ -564,15 +574,15 @@
         <div class="status-right">
             <div class="status-pill">
                 <div class="sp-label">Solar Wind</div>
-                <div class="sp-val" id="sw-speed" style="color:var(--accent3)">-- km/s</div>
+                <div class="sp-val" id="sw-speed" style="color:var(--orange)">-- km/s</div>
             </div>
             <div class="status-pill">
                 <div class="sp-label">Bz Field</div>
-                <div class="sp-val" id="sw-bz" style="color:var(--accent4)">-- nT</div>
+                <div class="sp-val" id="sw-bz" style="color:var(--purple)">-- nT</div>
             </div>
             <div class="status-pill">
                 <div class="sp-label">X-Ray Class</div>
-                <div class="sp-val" id="xray-class" style="color:var(--warn)">--</div>
+                <div class="sp-val" id="xray-class" style="color:var(--amber)">--</div>
             </div>
             <div class="status-pill">
                 <div class="sp-label">Updated</div>
@@ -585,7 +595,7 @@
 <!-- ============================================================ SDO SOLAR IMAGES -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--accent3)"></span>Sun — Live SDO Imagery</div>
+        <div class="section-title"><span class="pulse" style="background:var(--orange)"></span>Sun — Live SDO Imagery</div>
         <div class="section-meta">NASA Solar Dynamics Observatory · Updates every 15 min</div>
     </div>
 
@@ -593,21 +603,21 @@
         <div class="sdo-card">
             <img id="sdo-171" src="/api/sdo/0171" alt="SDO 171Å">
             <div class="sdo-label">
-                <div class="sdo-wave" style="color:#ffb703">171 Å</div>
+                <div class="sdo-wave" style="color:#f0b429">171 Å</div>
                 Corona · 600,000°C
             </div>
         </div>
         <div class="sdo-card">
             <img id="sdo-304" src="/api/sdo/0304" alt="SDO 304Å">
             <div class="sdo-label">
-                <div class="sdo-wave" style="color:#ff6b35">304 Å</div>
+                <div class="sdo-wave" style="color:#f97316">304 Å</div>
                 Chromosphere · 50,000°C
             </div>
         </div>
         <div class="sdo-card">
             <img id="sdo-hmib" src="/api/sdo/HMIB" alt="SDO HMI Magnetic">
             <div class="sdo-label">
-                <div class="sdo-wave" style="color:#00d4ff">HMI Magnetogram</div>
+                <div class="sdo-wave" style="color:#22d3ee">HMI Magnetogram</div>
                 Surface Magnetic Field
             </div>
         </div>
@@ -638,7 +648,7 @@
 <!-- ============================================================ AURORA -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--accent2)"></span>Aurora Visibility — Melbourne</div>
+        <div class="section-title"><span class="pulse" style="background:var(--green)"></span>Aurora Visibility — Melbourne</div>
         <div class="section-meta">Based on current Kp · Lat -37.8°</div>
     </div>
 
@@ -700,7 +710,7 @@
 <!-- ============================================================ NOAA ALERTS -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--warn)"></span>NOAA Space Weather Alerts</div>
+        <div class="section-title"><span class="pulse" style="background:var(--amber)"></span>NOAA Space Weather Alerts</div>
         <div class="section-meta" id="alerts-meta">Loading...</div>
     </div>
     <div class="alerts-wrap" id="alerts-wrap">
@@ -711,12 +721,12 @@
 <!-- ============================================================ GRAVITATIONAL WAVES -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--accent4)"></span>Gravitational Wave Detections</div>
+        <div class="section-title"><span class="pulse" style="background:var(--purple)"></span>Gravitational Wave Detections</div>
         <div class="section-meta">LIGO GraceDB · O4 Observing Run</div>
     </div>
 
     <div class="gw-status" id="gw-status-bar">
-        <div class="gw-indicator" id="gw-indicator" style="background:var(--accent2)"></div>
+        <div class="gw-indicator" id="gw-indicator" style="background:var(--green)"></div>
         <div>
             <div class="gw-status-text" id="gw-status-text">Checking for active detections...</div>
             <div class="gw-status-sub" id="gw-status-sub">LIGO · Virgo · KAGRA interferometers</div>
@@ -743,10 +753,10 @@ function timeAgo(isoStr) {
 }
 
 function kpColor(kp) {
-    if (kp < 4) return '#00ff9d';
-    if (kp < 5) return '#ffb703';
-    if (kp < 7) return '#ff6b35';
-    return '#ef233c';
+    if (kp < 4) return '#22c55e';
+    if (kp < 5) return '#f0b429';
+    if (kp < 7) return '#f97316';
+    return '#c8313a';
 }
 
 function kpStatus(kp) {
@@ -760,13 +770,13 @@ function kpStatus(kp) {
 }
 
 function auroraInfo(kp) {
-    if (kp < 4) return { pct: 2, status: 'Unlikely', color: 'rgba(0,255,157,0.3)', desc: 'Geomagnetic conditions are quiet. No aurora expected at Melbourne\'s latitude of -37.8°.' };
+    if (kp < 4) return { pct: 2, status: 'Unlikely', color: 'rgba(34,197,94,0.3)', desc: 'Geomagnetic conditions are quiet. No aurora expected at Melbourne\'s latitude of -37.8°.' };
     if (kp < 5) return { pct: 10, status: 'Very Low', color: 'rgba(255,183,3,0.3)', desc: 'Unsettled conditions. Aurora confined to very high latitudes (70°+). Not visible from Melbourne.' };
-    if (kp < 6) return { pct: 20, status: 'Low', color: 'rgba(255,107,53,0.35)', desc: 'Active conditions. Aurora visible from Tasmania on dark, clear nights. Melbourne still unlikely.' };
-    if (kp < 7) return { pct: 40, status: 'Possible', color: 'rgba(255,107,53,0.5)', desc: 'G1 storm. Aurora may be visible on the southern horizon from dark rural sites near Melbourne.' };
-    if (kp < 8) return { pct: 65, status: 'Likely', color: 'rgba(239,35,60,0.5)', desc: 'G2-G3 storm! Aurora should be visible from Melbourne on the southern horizon. Head somewhere dark.' };
-    if (kp < 9) return { pct: 85, status: 'High', color: 'rgba(239,35,60,0.7)', desc: 'G4 severe storm! Aurora likely visible from Melbourne even from suburban locations. GO LOOK SOUTH.' };
-    return { pct: 99, status: 'EXTREME', color: 'rgba(199,125,255,0.8)', desc: 'G5 EXTREME STORM! Aurora absolutely visible from Melbourne. One of the rarest events — go outside NOW.' };
+    if (kp < 6) return { pct: 20, status: 'Low', color: 'rgba(249,115,22,0.35)', desc: 'Active conditions. Aurora visible from Tasmania on dark, clear nights. Melbourne still unlikely.' };
+    if (kp < 7) return { pct: 40, status: 'Possible', color: 'rgba(249,115,22,0.5)', desc: 'G1 storm. Aurora may be visible on the southern horizon from dark rural sites near Melbourne.' };
+    if (kp < 8) return { pct: 65, status: 'Likely', color: 'rgba(200,49,58,0.5)', desc: 'G2-G3 storm! Aurora should be visible from Melbourne on the southern horizon. Head somewhere dark.' };
+    if (kp < 9) return { pct: 85, status: 'High', color: 'rgba(200,49,58,0.7)', desc: 'G4 severe storm! Aurora likely visible from Melbourne even from suburban locations. GO LOOK SOUTH.' };
+    return { pct: 99, status: 'EXTREME', color: 'rgba(168,85,247,0.8)', desc: 'G5 EXTREME STORM! Aurora absolutely visible from Melbourne. One of the rarest events — go outside NOW.' };
 }
 
 // ============================================================
@@ -854,7 +864,7 @@ function loadKp() {
             const aurora = auroraInfo(kp);
             document.getElementById('aurora-pct').textContent = aurora.pct + '%';
             document.getElementById('aurora-status').textContent = aurora.status;
-            document.getElementById('aurora-status').style.color = aurora.pct > 50 ? '#ef233c' : aurora.pct > 20 ? '#ff6b35' : '#00ff9d';
+            document.getElementById('aurora-status').style.color = aurora.pct > 50 ? '#c8313a' : aurora.pct > 20 ? '#f97316' : '#22c55e';
             document.getElementById('aurora-desc').textContent = aurora.desc;
 
             // Aurora glow effect
@@ -946,8 +956,8 @@ function loadSolarWind() {
                         labels,
                         datasets: [{
                             data: speeds,
-                            borderColor: '#ff6b35',
-                            backgroundColor: 'rgba(255,107,53,0.08)',
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249,115,22,0.08)',
                             borderWidth: 1.5,
                             pointRadius: 0,
                             fill: true,
@@ -972,8 +982,8 @@ function loadSolarWind() {
                         labels,
                         datasets: [{
                             data: dens,
-                            borderColor: '#00d4ff',
-                            backgroundColor: 'rgba(0,212,255,0.06)',
+                            borderColor: '#22d3ee',
+                            backgroundColor: 'rgba(34,211,238,0.06)',
                             borderWidth: 1.5,
                             pointRadius: 0,
                             fill: true,
@@ -999,7 +1009,7 @@ function loadSolarWind() {
 
                 const latestBz = bz[bz.length - 1];
                 document.getElementById('sw-bz').textContent = latestBz.toFixed(1) + ' nT';
-                document.getElementById('sw-bz').style.color = latestBz < -10 ? '#ef233c' : latestBz < 0 ? '#ff6b35' : '#00ff9d';
+                document.getElementById('sw-bz').style.color = latestBz < -10 ? '#c8313a' : latestBz < 0 ? '#f97316' : '#22c55e';
 
                 const ctx4 = document.getElementById('bz-chart').getContext('2d');
                 if (bzChart) bzChart.destroy();
@@ -1009,8 +1019,8 @@ function loadSolarWind() {
                         labels: mlabels,
                         datasets: [{
                             data: bz,
-                            borderColor: '#c77dff',
-                            backgroundColor: 'rgba(199,125,255,0.06)',
+                            borderColor: '#a855f7',
+                            backgroundColor: 'rgba(168,85,247,0.06)',
                             borderWidth: 1.5,
                             pointRadius: 0,
                             fill: true,
@@ -1070,7 +1080,7 @@ function loadXray() {
                     labels,
                     datasets: [{
                         data: values.map(v => Math.log10(v)),
-                        borderColor: '#ffb703',
+                        borderColor: '#f0b429',
                         backgroundColor: 'rgba(255,183,3,0.06)',
                         borderWidth: 1.5,
                         pointRadius: 0,
@@ -1164,9 +1174,9 @@ function loadGravWaves() {
 
             if (allMDC) {
                 statusEl.textContent = 'Interferometers in Mock Data Challenge Mode';
-                statusEl.style.color = '#ffb703';
-                indEl.style.background = '#ffb703';
-                indEl.style.boxShadow = '0 0 8px #ffb703';
+                statusEl.style.color = '#f0b429';
+                indEl.style.background = '#f0b429';
+                indEl.style.boxShadow = '0 0 8px #f0b429';
                 subEl.textContent = 'LIGO · Virgo · KAGRA running MDC — not live observing. Showing recent confirmed O4 detections.';
                 showHistoricalGW();
                 return;
@@ -1180,14 +1190,14 @@ function loadGravWaves() {
 
             if (active.length > 0) {
                 statusEl.textContent = `${active.length} Active Detection${active.length > 1 ? 's' : ''} — LIGO is ringing`;
-                statusEl.style.color = '#ef233c';
-                indEl.style.background = '#ef233c';
-                indEl.style.boxShadow = '0 0 14px #ef233c';
+                statusEl.style.color = '#c8313a';
+                indEl.style.background = '#c8313a';
+                indEl.style.boxShadow = '0 0 14px #c8313a';
                 subEl.textContent = 'Ripples in spacetime detected within the last 48 hours';
             } else {
                 statusEl.textContent = 'No Active Detections — Observing';
-                statusEl.style.color = '#00ff9d';
-                indEl.style.background = '#00ff9d';
+                statusEl.style.color = '#22c55e';
+                indEl.style.background = '#22c55e';
                 subEl.textContent = `${realEvents.length} confirmed O4 events · Interferometers listening`;
             }
 

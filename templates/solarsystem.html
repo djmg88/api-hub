@@ -3,26 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
     <title>Orbital & Space Hub — API Hub</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
     <style>
         :root {
-            --bg: #070b12;
-            --glass: rgba(255,255,255,0.04);
-            --glass-border: rgba(255,255,255,0.09);
-            --accent: #00d4ff;
-            --accent2: #00ff9d;
-            --accent3: #ff6b35;
-            --accent4: #c77dff;
-            --warn: #ffb703;
-            --text: rgba(255,255,255,0.92);
-            --text-muted: rgba(255,255,255,0.55);
-            --text-dim: rgba(255,255,255,0.28);
-            --mono: 'SF Mono','Fira Code',monospace;
-        }
+  --bg:          #18181b;
+  --surface:     #232327;
+  --surface-hi:  #2d2d32;
+  --border:      rgba(255,255,255,0.07);
+  --border-hi:   rgba(255,255,255,0.13);
+
+  --red:    #c8313a;
+  --amber:  #f0b429;
+  --blue:   #3b9eff;
+  --green:  #22c55e;
+  --orange: #f97316;
+  --cyan:   #22d3ee;
+  --purple: #a855f7;
+  --rose:   #f43f5e;
+
+  --text:       rgba(255,255,255,0.92);
+  --text-muted: rgba(255,255,255,0.55);
+  --text-dim:   rgba(255,255,255,0.28);
+
+  --sans: 'Outfit', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; overflow-x:hidden; }
+        body { background:var(--bg); color:var(--text); font-family:var(--sans); overflow-x:hidden; }
 
         .topbar { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 12px; }
         .topbar a { font-family:var(--mono); font-size:0.55rem; letter-spacing:2.5px; text-transform:uppercase; color:var(--text-dim); text-decoration:none; }
@@ -40,7 +51,7 @@
         /* ---- SOLAR SYSTEM MAP ---- */
         .map-container {
             background:#000;
-            border:1px solid var(--glass-border);
+            border:1px solid var(--border);
             border-radius:14px;
             overflow:hidden;
             position:relative;
@@ -63,14 +74,14 @@
             text-transform:uppercase;
             padding:7px 16px;
             border-radius:6px;
-            border:1px solid var(--glass-border);
-            background:var(--glass);
+            border:1px solid var(--border);
+            background:var(--surface);
             color:var(--text-dim);
             cursor:pointer;
             transition:all 0.2s;
         }
 
-        .vtbtn.active { border-color:var(--accent); color:var(--accent); background:rgba(0,212,255,0.08); }
+        .vtbtn.active { border-color:var(--cyan); color:var(--cyan); background:rgba(34,211,238,0.08); }
         .vtbtn:hover { border-color:var(--text-muted); color:var(--text-muted); }
 
         .ss-legend {
@@ -96,8 +107,8 @@
         /* Object tooltip */
         .ss-tooltip {
             position:absolute;
-            background:rgba(7,11,18,0.95);
-            border:1px solid var(--glass-border);
+            background:rgba(24,24,27,0.95);
+            border:1px solid var(--border);
             border-radius:8px;
             padding:10px 14px;
             font-family:var(--mono);
@@ -113,7 +124,7 @@
 
         /* ---- FIREBALLS ---- */
         .fireball-wrap {
-            border:1px solid var(--glass-border);
+            border:1px solid var(--border);
             border-radius:14px;
             overflow:hidden;
             margin-bottom:28px;
@@ -131,8 +142,8 @@
         }
 
         .fb-pill {
-            background:var(--glass);
-            border:1px solid var(--glass-border);
+            background:var(--surface);
+            border:1px solid var(--border);
             border-radius:10px;
             padding:10px 16px;
         }
@@ -141,20 +152,20 @@
         .fb-pill .fp-val { font-family:var(--mono); font-size:1rem; font-weight:600; }
 
         .fb-table-wrap {
-            background:var(--glass);
-            border:1px solid var(--glass-border);
+            background:var(--surface);
+            border:1px solid var(--border);
             border-radius:12px;
             overflow:hidden;
             margin-bottom:28px;
         }
 
         .fb-table { width:100%; border-collapse:collapse; }
-        .fb-table th { font-family:var(--mono); font-size:0.42rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:10px 14px; text-align:left; border-bottom:1px solid var(--glass-border); }
+        .fb-table th { font-family:var(--mono); font-size:0.42rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); }
         .fb-table td { font-family:var(--mono); font-size:0.55rem; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.03); color:var(--text-muted); }
         .fb-table tr:last-child td { border-bottom:none; }
-        .fb-table .energy-high { color:var(--danger); font-weight:600; }
-        .fb-table .energy-med { color:var(--warn); }
-        .fb-table .energy-low { color:var(--accent2); }
+        .fb-table .energy-high { color:var(--red); font-weight:600; }
+        .fb-table .energy-med { color:var(--amber); }
+        .fb-table .energy-low { color:var(--green); }
 
         /* ---- NEOS ---- */
         .neo-stats {
@@ -165,8 +176,8 @@
         }
 
         .neo-pill {
-            background:var(--glass);
-            border:1px solid var(--glass-border);
+            background:var(--surface);
+            border:1px solid var(--border);
             border-radius:10px;
             padding:10px 16px;
         }
@@ -175,19 +186,19 @@
         .neo-pill .np-val { font-family:var(--mono); font-size:1rem; font-weight:600; }
 
         .neo-table-wrap {
-            background:var(--glass);
-            border:1px solid var(--glass-border);
+            background:var(--surface);
+            border:1px solid var(--border);
             border-radius:12px;
             overflow:hidden;
             margin-bottom:40px;
         }
 
         .neo-table { width:100%; border-collapse:collapse; }
-        .neo-table th { font-family:var(--mono); font-size:0.42rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:10px 14px; text-align:left; border-bottom:1px solid var(--glass-border); }
+        .neo-table th { font-family:var(--mono); font-size:0.42rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); }
         .neo-table td { font-family:var(--mono); font-size:0.55rem; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.03); color:var(--text-muted); }
         .neo-table tr:last-child td { border-bottom:none; }
-        .hazard-yes { color:var(--danger); font-weight:700; }
-        .hazard-no  { color:var(--accent2); }
+        .hazard-yes { color:var(--red); font-weight:700; }
+        .hazard-no  { color:var(--green); }
 
         .no-data { font-family:var(--mono); font-size:0.55rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); padding:20px; text-align:center; }
 
@@ -205,7 +216,7 @@
 <!-- ============================================================ SOLAR SYSTEM MAP -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--warn)"></span>Solar System — Live Positions</div>
+        <div class="section-title"><span class="pulse" style="background:var(--amber)"></span>Solar System — Live Positions</div>
         <div class="section-meta" id="ss-meta">Loading JPL Horizons data...</div>
     </div>
 
@@ -222,9 +233,9 @@
             <div id="tt-body"></div>
         </div>
         <div style="position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:4px;z-index:10">
-            <button onclick="ssZoom(1.5)" style="font-family:var(--mono);font-size:1rem;width:32px;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(7,11,18,0.85);color:rgba(255,255,255,0.6);cursor:pointer;line-height:1">+</button>
-            <button onclick="ssZoom(0.67)" style="font-family:var(--mono);font-size:1rem;width:32px;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(7,11,18,0.85);color:rgba(255,255,255,0.6);cursor:pointer;line-height:1">−</button>
-            <button onclick="ssZoomReset()" style="font-family:var(--mono);font-size:0.45rem;width:32px;height:24px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(7,11,18,0.85);color:rgba(255,255,255,0.4);cursor:pointer;letter-spacing:1px">RST</button>
+            <button onclick="ssZoom(1.5)" style="font-family:var(--mono);font-size:1rem;width:32px;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(24,24,27,0.85);color:rgba(255,255,255,0.6);cursor:pointer;line-height:1">+</button>
+            <button onclick="ssZoom(0.67)" style="font-family:var(--mono);font-size:1rem;width:32px;height:32px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(24,24,27,0.85);color:rgba(255,255,255,0.6);cursor:pointer;line-height:1">−</button>
+            <button onclick="ssZoomReset()" style="font-family:var(--mono);font-size:0.45rem;width:32px;height:24px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(24,24,27,0.85);color:rgba(255,255,255,0.4);cursor:pointer;letter-spacing:1px">RST</button>
         </div>
     </div>
 
@@ -232,16 +243,16 @@
         <div class="ss-legend-item"><div class="ss-dot" style="background:#fff"></div>Planets</div>
         <div class="ss-legend-item"><div class="ss-dot" style="background:#c8c8c8"></div>Moon</div>
         <div class="ss-legend-item"><div class="ss-dot" style="background:#a0a0a0"></div>Dwarf Planets</div>
-        <div class="ss-legend-item"><div class="ss-dot" style="background:#00ff9d"></div>Spacecraft</div>
-        <div class="ss-legend-item"><div class="ss-dot" style="background:#ffb703"></div>NEOs</div>
-        <div class="ss-legend-item"><div class="ss-dot" style="background:#ff6b35"></div>Starman</div>
+        <div class="ss-legend-item"><div class="ss-dot" style="background:#22c55e"></div>Spacecraft</div>
+        <div class="ss-legend-item"><div class="ss-dot" style="background:#f0b429"></div>NEOs</div>
+        <div class="ss-legend-item"><div class="ss-dot" style="background:#f97316"></div>Starman</div>
     </div>
 </div>
 
 <!-- ============================================================ FIREBALLS -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--accent3)"></span>Fireball Events</div>
+        <div class="section-title"><span class="pulse" style="background:var(--orange)"></span>Fireball Events</div>
         <div class="section-meta">NASA CNEOS atmospheric impact detections</div>
     </div>
 
@@ -268,7 +279,7 @@
 <!-- ============================================================ NEOs -->
 <div class="section">
     <div class="section-header">
-        <div class="section-title"><span class="pulse" style="background:var(--warn)"></span>Near Earth Objects — This Week</div>
+        <div class="section-title"><span class="pulse" style="background:var(--amber)"></span>Near Earth Objects — This Week</div>
         <div class="section-meta" id="neo-meta">Loading...</div>
     </div>
 
@@ -442,7 +453,7 @@ function drawMapContents(g, W, H, cx, cy, scale) {
     const defs = g.append('defs');
     const sunGrad = defs.append('radialGradient').attr('id', 'sunGrad');
     sunGrad.append('stop').attr('offset','0%').attr('stop-color','#fff8e0');
-    sunGrad.append('stop').attr('offset','50%').attr('stop-color','#ffb703');
+    sunGrad.append('stop').attr('offset','50%').attr('stop-color','#f0b429');
     sunGrad.append('stop').attr('offset','100%').attr('stop-color','#ff6b00');
     g.append('circle').attr('cx',cx).attr('cy',cy).attr('r',sunR+8)
      .attr('fill','none').attr('stroke','rgba(255,183,3,0.12)').attr('stroke-width',10);
@@ -634,7 +645,7 @@ function drawLoadingMap() {
     const cx=W/2, cy=H/2;
     svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',16).attr('fill','none')
        .attr('stroke','rgba(255,183,3,0.15)').attr('stroke-width',12);
-    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',8).attr('fill','#ffb703');
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',8).attr('fill','#f0b429');
     svg.append('text').attr('x',cx).attr('y',cy+40).attr('text-anchor','middle')
        .attr('fill','rgba(255,255,255,0.3)').attr('font-family','SF Mono,monospace')
        .attr('font-size','11').text('Querying JPL Horizons...');
@@ -656,8 +667,8 @@ function loadFireballs() {
             const energies = rows.map(r => parseFloat(r[8]) || 0).filter(e => e > 0);
             const maxE = Math.max(...energies);
             document.getElementById('fb-stats').innerHTML = `
-                <div class="fb-pill"><div class="fp-label">Events</div><div class="fp-val" style="color:var(--accent3)">${rows.length}</div></div>
-                <div class="fb-pill"><div class="fp-label">Largest Event</div><div class="fp-val" style="color:var(--warn)">${maxE.toFixed(1)} kT TNT</div></div>
+                <div class="fb-pill"><div class="fp-label">Events</div><div class="fp-val" style="color:var(--orange)">${rows.length}</div></div>
+                <div class="fb-pill"><div class="fp-label">Largest Event</div><div class="fp-val" style="color:var(--amber)">${maxE.toFixed(1)} kT TNT</div></div>
                 <div class="fb-pill"><div class="fp-label">Data Source</div><div class="fp-val" style="color:var(--text-dim);font-size:0.6rem">NASA CNEOS</div></div>
             `;
 
@@ -693,7 +704,7 @@ function loadFireballs() {
                     if (isNaN(lat)||isNaN(lon)) { fbCircles.push(null); return; }
                     const [px,py] = projection([lon,lat]);
                     const radius = Math.max(3, Math.min(16, Math.log10(energy+1)*8+3));
-                    const col = energy > 10 ? '#ef233c' : energy > 1 ? '#ffb703' : '#ff6b35';
+                    const col = energy > 10 ? '#c8313a' : energy > 1 ? '#f0b429' : '#f97316';
 
                     svg.append('circle').attr('cx',px).attr('cy',py).attr('r',radius+3)
                        .attr('fill',col).attr('opacity',0.15);
@@ -734,7 +745,7 @@ function highlightFireball(idx) {
     document.querySelectorAll('[id^="fb-row-"]').forEach(r => r.style.background = '');
     // Highlight clicked row
     const row = document.getElementById(`fb-row-${idx}`);
-    if (row) row.style.background = 'rgba(255,107,53,0.15)';
+    if (row) row.style.background = 'rgba(249,115,22,0.15)';
 
     // Scroll map into view and pulse the dot
     document.getElementById('fb-svg').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -792,9 +803,9 @@ function loadNEOs() {
 
             document.getElementById('neo-meta').textContent = `${allNeos.length} objects this week · ${hazardous.length} potentially hazardous`;
             document.getElementById('neo-stats').innerHTML = `
-                <div class="neo-pill"><div class="np-label">Total This Week</div><div class="np-val" style="color:var(--accent)">${allNeos.length}</div></div>
-                <div class="neo-pill"><div class="np-label">Potentially Hazardous</div><div class="np-val" style="color:var(--danger)">${hazardous.length}</div></div>
-                <div class="neo-pill"><div class="np-label">Closest Approach</div><div class="np-val" style="color:var(--warn)">${closestLD} LD</div></div>
+                <div class="neo-pill"><div class="np-label">Total This Week</div><div class="np-val" style="color:var(--cyan)">${allNeos.length}</div></div>
+                <div class="neo-pill"><div class="np-label">Potentially Hazardous</div><div class="np-val" style="color:var(--red)">${hazardous.length}</div></div>
+                <div class="neo-pill"><div class="np-label">Closest Approach</div><div class="np-val" style="color:var(--amber)">${closestLD} LD</div></div>
             `;
 
             const tbody = document.getElementById('neo-tbody');

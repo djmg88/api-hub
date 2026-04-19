@@ -3,21 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <title>Ares · Maritime Tactical</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
-    --bg: #070b12;
-    --accent: #00d4ff;
-    --accent2: #00ff9d;
-    --accent3: #ff6b35;
-    --danger: #ef233c;
-    --text: rgba(255,255,255,0.92);
-    --text-muted: rgba(255,255,255,0.45);
-    --text-dim: rgba(255,255,255,0.22);
-    --mono: 'SF Mono','Fira Code',monospace;
-  }
+  --bg:          #18181b;
+  --surface:     #232327;
+  --surface-hi:  #2d2d32;
+  --border:      rgba(255,255,255,0.07);
+  --border-hi:   rgba(255,255,255,0.13);
+
+  --red:    #c8313a;
+  --amber:  #f0b429;
+  --blue:   #3b9eff;
+  --green:  #22c55e;
+  --orange: #f97316;
+  --cyan:   #22d3ee;
+  --purple: #a855f7;
+  --rose:   #f43f5e;
+
+  --text:       rgba(255,255,255,0.92);
+  --text-muted: rgba(255,255,255,0.55);
+  --text-dim:   rgba(255,255,255,0.28);
+
+  --sans: 'Outfit', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--bg); font-family: var(--mono); color: var(--text); overflow: hidden; }
 
@@ -36,37 +50,37 @@
 
   /* Corner brackets */
   .corner { position: absolute; width: 26px; height: 26px; }
-  .corner.tl { top:12px; left:12px;  border-top:1.5px solid rgba(0,212,255,.55); border-left:1.5px solid rgba(0,212,255,.55); }
-  .corner.tr { top:12px; right:12px; border-top:1.5px solid rgba(0,212,255,.55); border-right:1.5px solid rgba(0,212,255,.55); }
-  .corner.bl { bottom:12px; left:12px;  border-bottom:1.5px solid rgba(0,212,255,.55); border-left:1.5px solid rgba(0,212,255,.55); }
-  .corner.br { bottom:12px; right:12px; border-bottom:1.5px solid rgba(0,212,255,.55); border-right:1.5px solid rgba(0,212,255,.55); }
+  .corner.tl { top:12px; left:12px;  border-top:1.5px solid rgba(34,211,238,.55); border-left:1.5px solid rgba(34,211,238,.55); }
+  .corner.tr { top:12px; right:12px; border-top:1.5px solid rgba(34,211,238,.55); border-right:1.5px solid rgba(34,211,238,.55); }
+  .corner.bl { bottom:12px; left:12px;  border-bottom:1.5px solid rgba(34,211,238,.55); border-left:1.5px solid rgba(34,211,238,.55); }
+  .corner.br { bottom:12px; right:12px; border-bottom:1.5px solid rgba(34,211,238,.55); border-right:1.5px solid rgba(34,211,238,.55); }
 
   /* Top bar */
   #topbar {
     position: absolute; top: 0; left: 0; right: 0;
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 48px;
-    background: linear-gradient(to bottom, rgba(7,11,18,.85) 0%, transparent 100%);
+    background: linear-gradient(to bottom, rgba(24,24,27,.85) 0%, transparent 100%);
     font-size: .55rem; letter-spacing: 2px; text-transform: uppercase;
   }
-  #topbar .title   { color: rgba(0,212,255,.9); letter-spacing: 5px; }
+  #topbar .title   { color: rgba(34,211,238,.9); letter-spacing: 5px; }
   #topbar .coords  { color: var(--text-dim); }
   #topbar .updated { color: var(--text-dim); }
 
   /* Stats panel */
   #stats {
     position: absolute; top: 44px; right: 16px;
-    background: rgba(7,11,18,.78);
-    border: 1px solid rgba(0,212,255,.12);
+    background: rgba(24,24,27,.78);
+    border: 1px solid rgba(34,211,238,.12);
     border-radius: 8px; padding: 10px 14px; min-width: 116px;
   }
   .stat { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 5px; font-size: .45rem; letter-spacing: 1.5px; text-transform: uppercase; }
   .stat:last-child { margin-bottom: 0; }
   .stat .lbl  { color: var(--text-dim); }
-  .stat .cyan    { color: var(--accent); }
-  .stat .orange  { color: var(--accent3); }
-  .stat .green   { color: var(--accent2); }
-  .stat .red     { color: var(--danger); }
+  .stat .cyan    { color: var(--cyan); }
+  .stat .orange  { color: var(--orange); }
+  .stat .green   { color: var(--green); }
+  .stat .red     { color: var(--red); }
   .stat .white   { color: var(--text-muted); }
 
   /* Bottom bar */
@@ -74,7 +88,7 @@
     position: absolute; bottom: 0; left: 0; right: 0;
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 48px;
-    background: linear-gradient(to top, rgba(7,11,18,.75) 0%, transparent 100%);
+    background: linear-gradient(to top, rgba(24,24,27,.75) 0%, transparent 100%);
     font-size: .42rem; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim);
   }
 
@@ -85,28 +99,28 @@
     color: var(--text-dim); text-decoration: none; pointer-events: all;
     padding: 3px 6px; transition: color .2s;
   }
-  #back:hover { color: rgba(0,212,255,.8); }
+  #back:hover { color: rgba(34,211,238,.8); }
 
   /* ── Leaflet overrides ────────────────────────── */
   .leaflet-popup-content-wrapper {
-    background: rgba(7,11,18,.93) !important;
-    border: 1px solid rgba(0,212,255,.28) !important;
+    background: rgba(24,24,27,.93) !important;
+    border: 1px solid rgba(34,211,238,.28) !important;
     border-radius: 6px !important; color: var(--text) !important;
     font-family: var(--mono) !important;
     box-shadow: 0 4px 24px rgba(0,0,0,.65) !important;
   }
-  .leaflet-popup-tip { background: rgba(7,11,18,.93) !important; }
+  .leaflet-popup-tip { background: rgba(24,24,27,.93) !important; }
   .leaflet-popup-content { margin: 10px 14px !important; font-size: 11px !important; line-height: 1.9 !important; }
-  .leaflet-control-zoom a { background: rgba(7,11,18,.82) !important; color: rgba(0,212,255,.7) !important; border-color: rgba(0,212,255,.18) !important; }
-  .leaflet-control-attribution { background: rgba(7,11,18,.6) !important; color: rgba(255,255,255,.2) !important; font-size: 9px !important; }
+  .leaflet-control-zoom a { background: rgba(24,24,27,.82) !important; color: rgba(34,211,238,.7) !important; border-color: rgba(34,211,238,.18) !important; }
+  .leaflet-control-attribution { background: rgba(24,24,27,.6) !important; color: rgba(255,255,255,.2) !important; font-size: 9px !important; }
   .leaflet-control-attribution a { color: rgba(255,255,255,.3) !important; }
 
   /* Ship popup */
-  .pop-name  { font-size: 12px; font-weight: bold; color: var(--accent); letter-spacing: 1px; margin-bottom: 7px; }
+  .pop-name  { font-size: 12px; font-weight: bold; color: var(--cyan); letter-spacing: 1px; margin-bottom: 7px; }
   .pop-row   { display: flex; justify-content: space-between; gap: 20px; font-size: 10px; margin-bottom: 1px; }
   .pop-key   { color: rgba(255,255,255,.3); text-transform: uppercase; letter-spacing: 1px; font-size: 9px; }
   .pop-val   { color: var(--text); }
-  .pop-badge { display:inline-block; background:rgba(239,35,60,.18); border:1px solid rgba(239,35,60,.45); color:var(--danger); font-size:8px; padding:1px 7px; border-radius:3px; letter-spacing:1.5px; margin-top:7px; }
+  .pop-badge { display:inline-block; background:rgba(200,49,58,.18); border:1px solid rgba(200,49,58,.45); color:var(--red); font-size:8px; padding:1px 7px; border-radius:3px; letter-spacing:1.5px; margin-top:7px; }
 </style>
 </head>
 <body>
@@ -157,10 +171,10 @@ let markerLayer = L.layerGroup().addTo(map);
 function shipColor(type) {
   if (!type) return 'rgba(255,255,255,0.55)';
   const t = type.toLowerCase();
-  if (t === 'tanker')    return '#ff6b35';
-  if (t === 'cargo')     return '#00ff9d';
-  if (t === 'military')  return '#ef233c';
-  if (t === 'passenger') return '#c77dff';
+  if (t === 'tanker')    return '#f97316';
+  if (t === 'cargo')     return '#22c55e';
+  if (t === 'military')  return '#c8313a';
+  if (t === 'passenger') return '#a855f7';
   return 'rgba(255,255,255,0.55)';
 }
 
@@ -222,7 +236,7 @@ function drawShips(ships) {
   markerLayer.clearLayers();
   ships.forEach(ship => {
     if (ship.lat == null || ship.lon == null) return;
-    const color  = ship.military ? '#ef233c' : shipColor(ship.type);
+    const color  = ship.military ? '#c8313a' : shipColor(ship.type);
     const marker = L.marker([ship.lat, ship.lon], {
       icon: makeArrow(color, ship.heading)
     });

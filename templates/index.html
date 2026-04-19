@@ -3,39 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
     <title>API Hub</title>
     <style>
         :root {
-            --bg: #070b12;
-            --glass: rgba(255,255,255,0.04);
-            --glass-border: rgba(255,255,255,0.09);
-            --accent: #00d4ff;
-            --accent2: #00ff9d;
-            --accent3: #ff6b35;
-            --accent4: #c77dff;
-            --warn: #ffb703;
-            --danger: #ef233c;
-            --text: rgba(255,255,255,0.92);
-            --text-muted: rgba(255,255,255,0.55);
-            --text-dim: rgba(255,255,255,0.28);
-            --mono: 'SF Mono','Fira Code',monospace;
-        }
+  --bg:          #18181b;
+  --surface:     #232327;
+  --surface-hi:  #2d2d32;
+  --border:      rgba(255,255,255,0.07);
+  --border-hi:   rgba(255,255,255,0.13);
+
+  --red:    #c8313a;
+  --amber:  #f0b429;
+  --blue:   #3b9eff;
+  --green:  #22c55e;
+  --orange: #f97316;
+  --cyan:   #22d3ee;
+  --purple: #a855f7;
+  --rose:   #f43f5e;
+
+  --text:       rgba(255,255,255,0.92);
+  --text-muted: rgba(255,255,255,0.55);
+  --text-dim:   rgba(255,255,255,0.28);
+
+  --sans: 'Outfit', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-        body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--text);min-height:100vh;padding:20px 16px 24px;overflow-x:hidden}
+        body{background:var(--bg);font-family:var(--sans);color:var(--text);min-height:100vh;padding:20px 16px 24px;overflow-x:hidden}
         .header{text-align:center;margin-bottom:16px}
         .daydate{font-family:var(--mono);font-size:.6rem;letter-spacing:4px;text-transform:uppercase;color:var(--text-dim)}
         .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:900px;margin:0 auto}
         @media(max-width:600px){.grid{grid-template-columns:repeat(2,1fr);gap:10px}body{padding:16px 12px 20px}}
-        .nav-tile{background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px 14px;text-align:center;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none;color:var(--text);transition:border-color .2s,transform .1s;user-select:none}
+        .nav-tile{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 14px;text-align:center;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none;color:var(--text);transition:border-color .2s,transform .1s;user-select:none}
         .nav-tile:active{transform:scale(.97)}
         .nav-tile .nav-label{font-family:var(--mono);font-size:.58rem;text-transform:uppercase;letter-spacing:2px;color:var(--text-muted)}
         .nav-tile .nav-sub{font-family:var(--mono);font-size:.45rem;text-transform:uppercase;letter-spacing:1px;line-height:1.7;color:var(--text-dim)}
         @media(max-width:600px){.nav-tile .nav-sub{display:none}.nav-tile .nav-label{font-size:.52rem}}
-        .nav-tile.sky{border-color:rgba(0,212,255,.2)}.nav-tile.sky:hover{border-color:rgba(0,212,255,.5)}
-        .nav-tile.solar{border-color:rgba(255,107,53,.2)}.nav-tile.solar:hover{border-color:rgba(255,107,53,.5)}
-        .nav-tile.orbital{border-color:rgba(199,125,255,.2)}.nav-tile.orbital:hover{border-color:rgba(199,125,255,.5)}
-        .nav-tile.climate{border-color:rgba(0,255,157,.2)}.nav-tile.climate:hover{border-color:rgba(0,255,157,.5)}
-        .nav-tile.home{border-color:rgba(255,255,255,.1)}.nav-tile.home:hover{border-color:rgba(255,255,255,.2)}.nav-tile.ares{border-color:rgba(239,35,60,.2)}.nav-tile.ares:hover{border-color:rgba(239,35,60,.5)}
+        .nav-tile.sky{border-color:rgba(34,211,238,.2)}.nav-tile.sky:hover{border-color:rgba(34,211,238,.5)}
+        .nav-tile.solar{border-color:rgba(249,115,22,.2)}.nav-tile.solar:hover{border-color:rgba(249,115,22,.5)}
+        .nav-tile.orbital{border-color:rgba(168,85,247,.2)}.nav-tile.orbital:hover{border-color:rgba(168,85,247,.5)}
+        .nav-tile.climate{border-color:rgba(34,197,94,.2)}.nav-tile.climate:hover{border-color:rgba(34,197,94,.5)}
+        .nav-tile.home{border-color:rgba(255,255,255,.1)}.nav-tile.home:hover{border-color:rgba(255,255,255,.2)}.nav-tile.ares{border-color:rgba(200,49,58,.2)}.nav-tile.ares:hover{border-color:rgba(200,49,58,.5)}
         .home-row{grid-column:1/-1;display:flex;justify-content:center}
         .home-row .nav-tile{max-width:280px;width:100%;aspect-ratio:unset;padding:16px}
         .footer{text-align:center;margin-top:20px;font-family:var(--mono);font-size:.5rem;color:var(--text-dim);letter-spacing:2px}

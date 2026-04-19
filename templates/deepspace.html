@@ -3,29 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
     <title>Deep Space — API Hub</title>
     <style>
         :root {
-            --bg: #070b12;
-            --glass: rgba(255,255,255,0.04);
-            --glass-border: rgba(255,255,255,0.09);
-            --accent: #00d4ff;
-            --accent2: #00ff9d;
-            --accent3: #ff6b35;
-            --accent4: #c77dff;
-            --warn: #ffb703;
-            --danger: #ef233c;
-            --text: rgba(255,255,255,0.92);
-            --text-muted: rgba(255,255,255,0.55);
-            --text-dim: rgba(255,255,255,0.28);
-            --mono: 'SF Mono', 'Fira Code', monospace;
-        }
+  --bg:          #18181b;
+  --surface:     #232327;
+  --surface-hi:  #2d2d32;
+  --border:      rgba(255,255,255,0.07);
+  --border-hi:   rgba(255,255,255,0.13);
+
+  --red:    #c8313a;
+  --amber:  #f0b429;
+  --blue:   #3b9eff;
+  --green:  #22c55e;
+  --orange: #f97316;
+  --cyan:   #22d3ee;
+  --purple: #a855f7;
+  --rose:   #f43f5e;
+
+  --text:       rgba(255,255,255,0.92);
+  --text-muted: rgba(255,255,255,0.55);
+  --text-dim:   rgba(255,255,255,0.28);
+
+  --sans: 'Outfit', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             background: var(--bg);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: var(--sans);
             color: var(--text);
             min-height: 100vh;
             overflow-x: hidden;
@@ -88,7 +98,7 @@
             left: 0;
             right: 0;
             padding: 60px 32px 28px;
-            background: linear-gradient(to top, rgba(7,11,18,0.97) 0%, rgba(7,11,18,0.6) 60%, transparent 100%);
+            background: linear-gradient(to top, rgba(24,24,27,0.97) 0%, rgba(24,24,27,0.6) 60%, transparent 100%);
         }
 
         .hero-date {
@@ -96,7 +106,7 @@
             font-size: 0.55rem;
             letter-spacing: 3px;
             text-transform: uppercase;
-            color: var(--accent2);
+            color: var(--green);
             margin-bottom: 10px;
         }
 
@@ -174,14 +184,14 @@
             border-radius: 8px;
             overflow: hidden;
             cursor: pointer;
-            border: 1px solid var(--glass-border);
-            background: var(--glass);
+            border: 1px solid var(--border);
+            background: var(--surface);
             transition: border-color 0.2s, transform 0.15s;
             position: relative;
         }
 
         .thumb:hover { border-color: rgba(255,255,255,0.2); transform: scale(1.03); }
-        .thumb.active { border-color: var(--accent2); }
+        .thumb.active { border-color: var(--green); }
 
         .thumb img {
             width: 100%;
@@ -234,7 +244,7 @@
             font-size: 0.6rem;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: var(--danger);
+            color: var(--red);
         }
     </style>
 </head>
