@@ -1,6 +1,9 @@
-from flask import Flask, render_template, jsonify
-import requests, threading, time, datetime, json
+from flask import Flask, render_template, jsonify, Response, request
+import requests, threading, time, datetime, json, os, tempfile
 import websocket
+import numpy as np
+import rasterio
+from scipy.ndimage import uniform_filter, label, center_of_mass
 
 app = Flask(__name__)
 
@@ -29,6 +32,20 @@ OBS_ELEV = 119
 
 AISSTREAM_KEY = "f2544a3031b5f0b310381437e8ebc5f7c8589ff7"
 ARES_BOUNDS   = [[[23.0, 55.0], [27.5, 61.0]]]  # Strait of Hormuz bounding box
+
+# ---------------------------------------------------------------------------
+# Ares — SAR / Sentinel-1 constants
+# ---------------------------------------------------------------------------
+
+COPERNICUS_CLIENT_ID     = "sh-5a8c9fdf-b738-4b55-8103-2feb34b909ca"
+COPERNICUS_CLIENT_SECRET = "iY4Re2PYth5kt5m6VGPqdMMnUlnQDyWG"
+COPERNICUS_INSTANCE_ID   = "sh-5f8b630b-b083-49ed-b340-b8f01ecb81c4"
+
+SAR_BBOX          = [55.0, 23.0, 61.0, 27.5]  # [lon_min, lat_min, lon_max, lat_max]
+SAR_WIDTH         = 1024
+SAR_HEIGHT        = 512
+SAR_REFRESH_HOURS = 6
+
 
 _SHIP_TYPE_RANGES = [
     (range(20, 30), "Wing in Ground"),
@@ -102,9 +119,160 @@ def prune_stale_ships(ships_dict, max_age=1800):
     for mmsi in stale:
         del ships_dict[mmsi]
 
+
+def detect_ships_cfar(arr, guard_size=5, bg_size=20, threshold=6.0):
+    if arr.size == 0:
+        return []
+    if arr.mean() < 0:
+        arr = 10.0 ** (arr.astype(np.float64) / 10.0)
+    arr = arr.astype(np.float64)
+    w_total  = guard_size + bg_size * 2 + 1
+    w_guard  = guard_size
+    sum_total = uniform_filter(arr, w_total) * (w_total ** 2)
+    sum_guard = uniform_filter(arr, w_guard) * (w_guard ** 2)
+    ring_area = max(w_total ** 2 - w_guard ** 2, 1)
+    bg_mean   = (sum_total - sum_guard) / ring_area
+    bg_mean   = np.maximum(bg_mean, 1e-10)
+    detections = (arr / bg_mean) > threshold
+    labeled, num = label(detections)
+    if num == 0:
+        return []
+    centroids = []
+    for i in range(1, num + 1):
+        size = int(np.sum(labeled == i))
+        if 2 <= size <= 500:
+            cy, cx = center_of_mass(detections, labeled, i)
+            centroids.append((float(cy), float(cx)))
+    return centroids
+
+
+# ---------------------------------------------------------------------------
+# Ares — SAR / Sentinel-1 backend
+# ---------------------------------------------------------------------------
+
+def get_sar_token():
+    now = time.time()
+    if sar_token["value"] and sar_token["expires"] > now + 60:
+        return sar_token["value"]
+    try:
+        resp = requests.post(
+            "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token",
+            data={
+                "grant_type":    "client_credentials",
+                "client_id":     COPERNICUS_CLIENT_ID,
+                "client_secret": COPERNICUS_CLIENT_SECRET,
+            },
+            timeout=10
+        )
+        resp.raise_for_status()
+        d = resp.json()
+        sar_token["value"]   = d["access_token"]
+        sar_token["expires"] = now + d.get("expires_in", 600)
+        return sar_token["value"]
+    except Exception as e:
+        print(f"[SAR] Token error: {e}")
+        return None
+
+
+def _download_sar_geotiff():
+    token = get_sar_token()
+    if not token:
+        raise RuntimeError("SAR token unavailable")
+    now    = datetime.datetime.utcnow()
+    t_to   = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    t_from = (now - datetime.timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    payload = {
+        "input": {
+            "bounds": {
+                "bbox":       SAR_BBOX,
+                "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"}
+            },
+            "data": [{
+                "type":       "sentinel-1-grd",
+                "dataFilter": {
+                    "timeRange":       {"from": t_from, "to": t_to},
+                    "acquisitionMode": "IW",
+                    "polarization":    "DV",
+                    "resolution":      "HIGH"
+                },
+                "processing": {
+                    "backCoeff":    "SIGMA0_DB",
+                    "orthorectify": True,
+                    "demInstance":  "COPERNICUS"
+                }
+            }]
+        },
+        "output": {
+            "width":     SAR_WIDTH,
+            "height":    SAR_HEIGHT,
+            "responses": [{"identifier": "default", "format": {"type": "image/tiff"}}]
+        },
+        "evalscript": (
+            "//VERSION=3\n"
+            "function setup() {\n"
+            "  return { input: ['VV'], output: { bands: 1, sampleType: 'FLOAT32' } };\n"
+            "}\n"
+            "function evaluatePixel(sample) { return [sample.VV]; }"
+        )
+    }
+    resp = requests.post(
+        "https://sh.dataspace.copernicus.eu/api/v1/process",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=60
+    )
+    resp.raise_for_status()
+    tmp = tempfile.NamedTemporaryFile(suffix=".tiff", delete=False)
+    tmp.write(resp.content)
+    tmp.close()
+    return tmp.name, t_to
+
+
+def _detect_and_store():
+    tmp_path = None
+    try:
+        print("[SAR] Starting scene download...")
+        tmp_path, scene_ts = _download_sar_geotiff()
+        with rasterio.open(tmp_path) as ds:
+            arr       = ds.read(1)
+            transform = ds.transform
+        centroids = detect_ships_cfar(arr)
+        results = []
+        for cy, cx in centroids:
+            lon, lat = rasterio.transform.xy(transform, cy, cx)
+            lon, lat = float(lon), float(lat)
+            if SAR_BBOX[1] <= lat <= SAR_BBOX[3] and SAR_BBOX[0] <= lon <= SAR_BBOX[2]:
+                results.append({"lat": round(lat, 5), "lon": round(lon, 5), "source": "SAR", "scene": scene_ts})
+        with sar_lock:
+            sar_ships.clear()
+            sar_ships.extend(results)
+            sar_status["last_run"]   = time.time()
+            sar_status["scene_date"] = scene_ts
+            sar_status["count"]      = len(results)
+            sar_status["error"]      = None
+        print(f"[SAR] Detection complete: {len(results)} ships")
+    except Exception as e:
+        with sar_lock:
+            sar_status["last_run"] = time.time()
+            sar_status["error"]    = str(e)
+        print(f"[SAR] Detection error: {e}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def _run_sar_refresh():
+    while True:
+        _detect_and_store()
+        time.sleep(SAR_REFRESH_HOURS * 3600)
+
 cache = {}
 ares_ships = {}        # keyed by MMSI string, stores latest state per vessel
 ares_lock  = threading.Lock()
+sar_token  = {"value": None, "expires": 0}
+sar_ships  = []
+sar_lock   = threading.Lock()
+sar_status = {"last_run": None, "scene_date": None, "count": 0, "error": None}
 opensky_token = {"value": None, "expires": 0}
 
 # ---------------------------------------------------------------------------
@@ -409,6 +577,8 @@ def _run_ares():
 def init_cache():
     # Ares
     threading.Thread(target=_run_ares, daemon=True).start()
+    # SAR
+    threading.Thread(target=_run_sar_refresh, daemon=True).start()
 
     # Sky Watch
     threading.Thread(target=refresh_flights, daemon=True).start()
@@ -680,6 +850,39 @@ def api_ares_ships():
     with ares_lock:
         ships = [s for s in ares_ships.values() if s.get("lat") is not None and s.get("lon") is not None]
     return jsonify({"ships": ships, "count": len(ships), "ts": time.time(), "error": None})
+
+
+@app.route("/api/ares/sar-tile")
+def api_ares_sar_tile():
+    token = get_sar_token()
+    if not token:
+        return "SAR auth unavailable", 503
+    try:
+        params = dict(request.args)
+        resp = requests.get(
+            f"https://sh.dataspace.copernicus.eu/ogc/wms/{COPERNICUS_INSTANCE_ID}",
+            params=params,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=20
+        )
+        return Response(resp.content, content_type=resp.headers.get("content-type", "image/png"))
+    except Exception as e:
+        return f"SAR tile error: {e}", 502
+
+
+@app.route("/api/ares/sar-ships")
+def api_ares_sar_ships():
+    with sar_lock:
+        ships  = list(sar_ships)
+        status = dict(sar_status)
+    return jsonify({"ships": ships, "count": len(ships), "status": status})
+
+
+@app.route("/api/ares/sar-status")
+def api_ares_sar_status():
+    with sar_lock:
+        status = dict(sar_status)
+    return jsonify(status)
 
 
 if __name__ == "__main__":

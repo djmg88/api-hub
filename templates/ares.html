@@ -121,6 +121,35 @@
   .pop-key   { color: rgba(255,255,255,.3); text-transform: uppercase; letter-spacing: 1px; font-size: 9px; }
   .pop-val   { color: var(--text); }
   .pop-badge { display:inline-block; background:rgba(200,49,58,.18); border:1px solid rgba(200,49,58,.45); color:var(--red); font-size:8px; padding:1px 7px; border-radius:3px; letter-spacing:1.5px; margin-top:7px; }
+
+  /* SAR toggle panel */
+  #sar-panel {
+    position: absolute; top: 176px; right: 16px;
+    background: rgba(24,24,27,.78);
+    border: 1px solid rgba(34,211,238,.12);
+    border-radius: 8px; padding: 8px 14px; min-width: 116px;
+    pointer-events: all;
+  }
+  .sar-label {
+    font-size: .38rem; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 6px;
+  }
+  .sar-btn {
+    display: block; width: 100%;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 4px; color: var(--text-dim);
+    font-family: var(--mono); font-size: .4rem;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 5px 10px; cursor: pointer; margin-bottom: 5px;
+    text-align: left; transition: all .2s;
+  }
+  .sar-btn:last-child { margin-bottom: 0; }
+  .sar-btn.active {
+    background: rgba(34,211,238,.1);
+    border-color: rgba(34,211,238,.45);
+    color: var(--cyan);
+  }
 </style>
 </head>
 <body>
@@ -147,10 +176,16 @@
     <div class="stat"><span class="lbl">Other</span>   <span id="cnt-other"   class="white">—</span></div>
   </div>
 
+  <div id="sar-panel">
+    <div class="sar-label">SAR Layers</div>
+    <button id="btn-sar-img"   class="sar-btn" onclick="toggleSarImg()">SAR IMG · OFF</button>
+    <button id="btn-sar-ships" class="sar-btn" onclick="toggleSarShips()">SAR SHIPS · OFF</button>
+  </div>
+
   <div id="bottombar">
     <span>AIS · aisstream.io</span>
     <span>API Hub · Port 5003</span>
-    <span>30s refresh</span>
+    <span>AIS 30s · SAR 6h</span>
   </div>
 
   <a id="back" href="/">← Hub</a>
@@ -257,6 +292,89 @@ function fetchAndDraw() {
 
 fetchAndDraw();
 setInterval(fetchAndDraw, 30000);
+
+// ── SAR layers ───────────────────────────────────────────────────────────
+const sarImgLayer = L.tileLayer.wms('/api/ares/sar-tile', {
+  layers:      'SAR-VV',
+  format:      'image/png',
+  transparent:  true,
+  opacity:      0.65,
+  version:     '1.3.0',
+  tileSize:    512,
+  attribution: '© Copernicus/ESA'
+});
+
+let sarShipLayer = L.layerGroup();
+let sarImgOn     = false;
+let sarShipsOn   = false;
+let sarShipsLoaded = false;
+
+function toggleSarImg() {
+  sarImgOn = !sarImgOn;
+  const btn = document.getElementById('btn-sar-img');
+  if (sarImgOn) {
+    sarImgLayer.addTo(map);
+    btn.classList.add('active');
+    btn.textContent = 'SAR IMG · ON';
+  } else {
+    map.removeLayer(sarImgLayer);
+    btn.classList.remove('active');
+    btn.textContent = 'SAR IMG · OFF';
+  }
+}
+
+function makeSarIcon() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
+    <rect x="2" y="2" width="10" height="10" fill="none" stroke="#22d3ee" stroke-width="1.5" transform="rotate(45,7,7)"/>
+    <circle cx="7" cy="7" r="1.5" fill="#22d3ee" opacity="0.9"/>
+  </svg>`;
+  return L.divIcon({ html: svg, iconSize: [14, 14], iconAnchor: [7, 7], className: '' });
+}
+
+function buildSarPopup(s) {
+  return `
+    <div class="pop-name" style="color:#22d3ee">SAR DETECTION</div>
+    <div class="pop-row"><span class="pop-key">Source</span> <span class="pop-val">Sentinel-1 GRD</span></div>
+    <div class="pop-row"><span class="pop-key">Scene</span>  <span class="pop-val">${(s.scene||'').slice(0,10)}</span></div>
+    <div class="pop-row"><span class="pop-key">Lat</span>    <span class="pop-val">${s.lat.toFixed(4)}°</span></div>
+    <div class="pop-row"><span class="pop-key">Lon</span>    <span class="pop-val">${s.lon.toFixed(4)}°</span></div>
+    <div style="margin-top:7px;font-size:9px;color:rgba(255,255,255,.25)">No AIS required — radar return only</div>
+  `;
+}
+
+function drawSarShips(ships) {
+  sarShipLayer.clearLayers();
+  ships.forEach(s => {
+    const m = L.marker([s.lat, s.lon], { icon: makeSarIcon() });
+    m.bindPopup(buildSarPopup(s), { maxWidth: 230 });
+    sarShipLayer.addLayer(m);
+  });
+}
+
+function fetchSarShips() {
+  if (!sarShipsOn) return;
+  fetch('/api/ares/sar-ships')
+    .then(r => r.json())
+    .then(data => { drawSarShips(data.ships || []); sarShipsLoaded = true; })
+    .catch(e => console.error('[SAR] fetch error:', e));
+}
+
+function toggleSarShips() {
+  sarShipsOn = !sarShipsOn;
+  const btn = document.getElementById('btn-sar-ships');
+  if (sarShipsOn) {
+    sarShipLayer.addTo(map);
+    btn.classList.add('active');
+    btn.textContent = 'SAR SHIPS · ON';
+    if (!sarShipsLoaded) fetchSarShips();
+  } else {
+    map.removeLayer(sarShipLayer);
+    btn.classList.remove('active');
+    btn.textContent = 'SAR SHIPS · OFF';
+  }
+}
+
+setInterval(fetchSarShips, 30 * 60 * 1000);
 </script>
 
 </body>
