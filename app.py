@@ -31,7 +31,7 @@ OBS_ELEV = 119
 # ---------------------------------------------------------------------------
 
 AISSTREAM_KEY = "f2544a3031b5f0b310381437e8ebc5f7c8589ff7"
-ARES_BOUNDS   = [[[23.0, 55.0], [27.5, 61.0]]]  # Strait of Hormuz bounding box
+ARES_BOUNDS   = [[[20.0, 50.0], [28.0, 65.0]]]  # Persian Gulf + Strait + Gulf of Oman
 
 # ---------------------------------------------------------------------------
 # Ares — SAR / Sentinel-1 constants
@@ -41,9 +41,9 @@ COPERNICUS_CLIENT_ID     = "sh-5a8c9fdf-b738-4b55-8103-2feb34b909ca"
 COPERNICUS_CLIENT_SECRET = "iY4Re2PYth5kt5m6VGPqdMMnUlnQDyWG"
 COPERNICUS_INSTANCE_ID   = "sh-5f8b630b-b083-49ed-b340-b8f01ecb81c4"
 
-SAR_BBOX          = [55.0, 23.0, 61.0, 27.5]  # [lon_min, lat_min, lon_max, lat_max]
-SAR_WIDTH         = 1024
-SAR_HEIGHT        = 512
+SAR_BBOX          = [50.0, 20.0, 65.0, 28.0]  # [lon_min, lat_min, lon_max, lat_max]
+SAR_WIDTH         = 2048
+SAR_HEIGHT        = 1024
 SAR_REFRESH_HOURS = 6
 
 
