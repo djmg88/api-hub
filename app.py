@@ -196,7 +196,7 @@ def _download_sar_geotiff():
                     "resolution":      "HIGH"
                 },
                 "processing": {
-                    "backCoeff":    "SIGMA0_DB",
+                    "backCoeff":    "SIGMA0_ELLIPSOID",
                     "orthorectify": True,
                     "demInstance":  "COPERNICUS"
                 }
