@@ -31,7 +31,7 @@ OBS_ELEV = 119
 # ---------------------------------------------------------------------------
 
 AISSTREAM_KEY = "f2544a3031b5f0b310381437e8ebc5f7c8589ff7"
-ARES_BOUNDS   = [[[20.0, 50.0], [28.0, 65.0]]]  # Persian Gulf + Strait + Gulf of Oman
+ARES_BOUNDS   = [[[20.0, 47.0], [30.0, 65.0]]]  # Full region: Persian Gulf + Strait + Gulf of Oman
 
 # ---------------------------------------------------------------------------
 # Ares — SAR / Sentinel-1 constants
@@ -41,9 +41,13 @@ COPERNICUS_CLIENT_ID     = "sh-5a8c9fdf-b738-4b55-8103-2feb34b909ca"
 COPERNICUS_CLIENT_SECRET = "iY4Re2PYth5kt5m6VGPqdMMnUlnQDyWG"
 COPERNICUS_INSTANCE_ID   = "sh-5f8b630b-b083-49ed-b340-b8f01ecb81c4"
 
-SAR_BBOX          = [50.0, 20.0, 65.0, 28.0]  # [lon_min, lat_min, lon_max, lat_max]
-SAR_WIDTH         = 2048
-SAR_HEIGHT        = 1024
+SAR_ZONES = [
+    [47.0, 24.0, 54.5, 29.5],   # Western Persian Gulf (Kuwait → Qatar)
+    [53.5, 23.5, 61.5, 28.5],   # Central Gulf + Strait of Hormuz
+    [56.5, 19.0, 65.0, 26.0],   # Gulf of Oman
+]
+SAR_WIDTH         = 1024
+SAR_HEIGHT        = 512
 SAR_REFRESH_HOURS = 6
 
 
@@ -174,7 +178,7 @@ def get_sar_token():
         return None
 
 
-def _download_sar_geotiff():
+def _download_sar_geotiff(bbox):
     token = get_sar_token()
     if not token:
         raise RuntimeError("SAR token unavailable")
@@ -184,7 +188,7 @@ def _download_sar_geotiff():
     payload = {
         "input": {
             "bounds": {
-                "bbox":       SAR_BBOX,
+                "bbox":       bbox,
                 "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"}
             },
             "data": [{
@@ -229,36 +233,43 @@ def _download_sar_geotiff():
 
 
 def _detect_and_store():
-    tmp_path = None
-    try:
-        print("[SAR] Starting scene download...")
-        tmp_path, scene_ts = _download_sar_geotiff()
-        with rasterio.open(tmp_path) as ds:
-            arr       = ds.read(1)
-            transform = ds.transform
-        centroids = detect_ships_cfar(arr)
-        results = []
-        for cy, cx in centroids:
-            lon, lat = rasterio.transform.xy(transform, cy, cx)
-            lon, lat = float(lon), float(lat)
-            if SAR_BBOX[1] <= lat <= SAR_BBOX[3] and SAR_BBOX[0] <= lon <= SAR_BBOX[2]:
-                results.append({"lat": round(lat, 5), "lon": round(lon, 5), "source": "SAR", "scene": scene_ts})
-        with sar_lock:
-            sar_ships.clear()
-            sar_ships.extend(results)
-            sar_status["last_run"]   = time.time()
-            sar_status["scene_date"] = scene_ts
-            sar_status["count"]      = len(results)
-            sar_status["error"]      = None
-        print(f"[SAR] Detection complete: {len(results)} ships")
-    except Exception as e:
-        with sar_lock:
-            sar_status["last_run"] = time.time()
-            sar_status["error"]    = str(e)
-        print(f"[SAR] Detection error: {e}")
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+    all_results = []
+    last_scene  = None
+    errors      = []
+    for zone in SAR_ZONES:
+        tmp_path = None
+        try:
+            print(f"[SAR] Downloading zone {zone}...")
+            tmp_path, scene_ts = _download_sar_geotiff(zone)
+            last_scene = scene_ts
+            with rasterio.open(tmp_path) as ds:
+                arr       = ds.read(1)
+                transform = ds.transform
+            centroids = detect_ships_cfar(arr)
+            for cy, cx in centroids:
+                lon, lat = rasterio.transform.xy(transform, cy, cx)
+                lon, lat = float(lon), float(lat)
+                if zone[1] <= lat <= zone[3] and zone[0] <= lon <= zone[2]:
+                    all_results.append({"lat": round(lat, 5), "lon": round(lon, 5), "source": "SAR", "scene": scene_ts})
+            print(f"[SAR] Zone {zone[0]}–{zone[2]}°E: {len(centroids)} raw detections")
+        except Exception as e:
+            errors.append(f"zone {zone[0]}-{zone[2]}: {e}")
+            print(f"[SAR] Zone error {zone}: {e}")
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+    deduped = []
+    for ship in all_results:
+        if not any(abs(ship["lat"] - s["lat"]) < 0.05 and abs(ship["lon"] - s["lon"]) < 0.05 for s in deduped):
+            deduped.append(ship)
+    with sar_lock:
+        sar_ships.clear()
+        sar_ships.extend(deduped)
+        sar_status["last_run"]   = time.time()
+        sar_status["scene_date"] = last_scene
+        sar_status["count"]      = len(deduped)
+        sar_status["error"]      = "; ".join(errors) if errors else None
+    print(f"[SAR] Complete: {len(deduped)} ships across {len(SAR_ZONES)} zones")
 
 
 def _run_sar_refresh():
